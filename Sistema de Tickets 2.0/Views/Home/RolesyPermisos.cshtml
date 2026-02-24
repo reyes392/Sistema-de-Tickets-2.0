@@ -1,0 +1,243 @@
+﻿@using Capa_Entidad;
+@using Capa_Entidad.Tickets
+@model SeguridadViewModel
+
+@{
+    ViewData["Title"] = "Gestión de Seguridad";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><i class="fas fa-user-tag text-primary"></i> Roles</h2>
+                <button class="btn btn-primary btn-sm shadow-sm" onclick="nuevoRol()">
+                    <i class="fas fa-plus"></i> Nuevo Rol
+                </button>
+            </div>
+
+            <div class="table-responsive shadow-sm rounded">
+                <table class="table table-sm table-hover border">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 15%">ID</th>
+                            <th>Descripción</th>
+                            <th style="width: 20%" class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rol in Model.ListaRoles)
+                        {
+                        <tr>
+                            <td class="fw-bold">@rol.IdRol</td>
+                            <td>@rol.Descripcion</td>
+                            <td class="text-center">
+                                <button class="btn btn-warning btn-sm shadow-sm" onclick="editarRol(@rol.IdRol, '@rol.Descripcion')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h2 class="mb-3"><i class="fas fa-users text-info"></i> Usuarios</h2>
+            <div class="table-responsive shadow-sm rounded">
+                <table class="table table-sm table-hover border">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Rol Actual</th>
+                            <th class="text-center">Permisos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model.ListaUsuarios)
+                        {
+                        <tr>
+                            <td>
+                                <div class="fw-bold">@u.UserName</div>
+                                <small class="text-muted">@u.Nombres</small>
+                            </td>
+                            <td><span class="badge bg-secondary">@u.Rol</span></td>
+                            <td class="text-center">
+                                <button class="btn btn-info btn-sm text-white shadow-sm" onclick="gestionarPermisosIndividuales(@u.IdUsuario, '@u.Nombres')">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalRol" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="tituloModal">Nuevo Rol</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="IdRol" />
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nombre del Rol</label>
+                    <input type="text" id="Descripcion" class="form-control" placeholder="Ej: Administrador" />
+                </div>
+                <hr />
+                <h6 class="mb-3 text-primary"><i class="fas fa-shield-alt"></i> Permisos Asignados al Rol</h6>
+                <div id="contenedorPermisos" class="list-group shadow-sm border rounded">
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="guardarRol()">
+                    <i class="fas fa-save"></i> Guardar Rol
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPermisosUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-key"></i> Permisos: <span id="nombreUsuarioPermiso"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">Los permisos marcados con <i class="fas fa-shield-alt text-primary"></i> vienen heredados por el rol y no se pueden quitar aquí.</p>
+                <div id="listaPermisosUsuario" class="list-group shadow-sm border rounded"></div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let accion = "INSERT";
+
+        // --- FUNCIONES DE ROL ---
+
+        function nuevoRol() {
+            accion = "INSERT";
+            $("#IdRol").val(0);
+            $("#Descripcion").val("");
+            $("#contenedorPermisos").html('<p class="text-center p-3 text-muted">Primero guarde el rol para asignar permisos.</p>');
+            $("#tituloModal").text("Crear Nuevo Rol");
+            $("#modalRol").modal("show");
+        }
+
+        function editarRol(id, descripcion) {
+            accion = "UPDATE";
+            $("#IdRol").val(id);
+            $("#Descripcion").val(descripcion);
+            $("#tituloModal").text("Editar Rol: " + descripcion);
+            cargarPermisos(id);
+            $("#modalRol").modal("show");
+        }
+
+        function cargarPermisos(idRol) {
+            $("#contenedorPermisos").html('<div class="text-center my-3"><div class="spinner-border text-primary"></div></div>');
+
+            $.get('@Url.Action("ListarPermisos", "Home")', function (permisos) {
+                $.get('@Url.Action("ObtenerPermisosRol", "Home")', { idRol: idRol }, function (permisosRol) {
+                    let html = "";
+                    $.each(permisos, function (i, p) {
+                        let idPermiso = p.idPermiso ?? p.IdPermiso ?? p.ID_PERMISO;
+                        let desc = p.descripcion ?? p.Descripcion ?? p.DESCRIPCION;
+                        let checked = permisosRol.includes(idPermiso) ? "checked" : "";
+
+                        html += `
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" ${checked}
+                                               onchange="cambiarPermiso(${idRol}, ${idPermiso}, this.checked)">
+                                        <label class="form-check-label w-100" style="cursor:pointer">${desc}</label>
+                                    </div>
+                                </div>`;
+                    });
+                    $("#contenedorPermisos").html(html || '<p class="p-3 text-center">No hay permisos definidos.</p>');
+                });
+            });
+        }
+
+        function cambiarPermiso(idRol, idPermiso, asignar) {
+            $.post('@Url.Action("CambiarPermisoRol", "Home")', {
+                idRol: idRol,
+                idPermiso: idPermiso,
+                asignar: asignar.toString()
+            }, function (resp) {
+                if (!resp.success) alert(resp.mensaje);
+            });
+        }
+
+        function guardarRol() {
+            let rol = { IdRol: $("#IdRol").val(), Descripcion: $("#Descripcion").val() };
+            $.post('@Url.Action("GuardarRoles", "Home")', { rol: rol, accion: accion }, function (resp) {
+                if (resp.success) {
+                    location.reload();
+                } else {
+                    alert(resp.mensaje);
+                }
+            });
+        }
+
+        // --- FUNCIONES DE USUARIO ---
+
+        function gestionarPermisosIndividuales(idUsuario, nombre) {
+            $("#nombreUsuarioPermiso").text(nombre);
+            $("#listaPermisosUsuario").html('<div class="text-center my-3"><div class="spinner-border text-info"></div></div>');
+            $("#modalPermisosUsuario").modal("show");
+
+            $.get('@Url.Action("ObtenerPermisosUsuarioCompleto", "Home")', { idUsuario: idUsuario }, function (data) {
+                let html = "";
+                data.forEach(p => {
+                    let estaPorRol = p.asignadoRol || p.AsignadoRol;
+                    let estaPorUsuario = p.asignadoUsuario || p.AsignadoUsuario;
+                    let idPermiso = p.idPermiso || p.IdPermiso;
+                    let desc = p.descripcion || p.Descripcion;
+
+                    let checked = (estaPorRol || estaPorUsuario) ? "checked" : "";
+                    let disabled = estaPorRol ? "disabled" : "";
+                    let iconoRol = estaPorRol ? '<i class="fas fa-shield-alt text-primary float-end" title="Heredado por Rol"></i>' : '';
+
+                    html += `
+                            <div class="list-group-item list-group-item-action">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           ${checked} ${disabled}
+                                           onchange="cambiarPermisoUsuario(${idUsuario}, ${idPermiso}, this.checked)">
+                                    <label class="form-check-label w-100" style="cursor:pointer">
+                                        ${desc} ${iconoRol}
+                                    </label>
+                                </div>
+                            </div>`;
+                });
+                $("#listaPermisosUsuario").html(html || '<p class="p-3 text-center">No hay permisos.</p>');
+            });
+        }
+
+        function cambiarPermisoUsuario(idUsuario, idPermiso, asignar) {
+            $.post('@Url.Action("CambiarPermisoUsuario", "Home")', {
+                idUsuario: idUsuario,
+                idPermiso: idPermiso,
+                asignar: asignar
+            }, function (resp) {
+                if (!resp.success) alert(resp.mensaje);
+            });
+        }
+    </script>
+}

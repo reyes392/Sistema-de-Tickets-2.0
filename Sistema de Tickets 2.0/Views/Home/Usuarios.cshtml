@@ -1,0 +1,204 @@
+﻿@model List<E_Usuarios>
+@using Capa_Entidad.Tickets
+
+@{
+    ViewData["Title"] = "Usuarios";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1 class="text-center">Usuarios</h1>
+
+<button class="btn btn-primary mb-3 " data-bs-toggle="modal" data-bs-target="#modalUsuario" onclick="abrirModal('INSERT')">
+    <i class="fas fa-plus">  Nuevo Usuario</i>
+</button>
+
+<div class="table-responsive shadow">
+    <table class="table table-bordered table-striped" id="tblUsuarios">
+        <thead class="table-dark">
+            <tr>
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Usuario</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Categoría</th>
+                <th>Registro</th>
+                <th>Modificacion</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Model)
+            {
+                <tr data-id="@u.IdUsuario">
+                    <td>@u.Nombres</td>
+                    <td>@u.Apellidos</td>
+                    <td>@u.UserName</td>
+                    <td>@u.Correo</td>
+                    <td>@u.Rol</td>
+                    <td>@u.Estado</td>
+                    <td>@u.Categoria</td>
+                    <td>@u.FechaRegistrar</td>
+                    <td>@u.FechaModificacion</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalUsuario"
+                                data-id="@u.IdUsuario"
+                                data-nombres="@u.Nombres"
+                                data-apellidos="@u.Apellidos"
+                                data-username="@u.UserName"
+                                data-correo="@u.Correo"
+                                data-rol="@u.Rol"
+                                data-estado="@u.Estado"
+                                data-categoria="@u.Categoria"
+                                onclick="abrirModal('UPDATE', this)">
+                            @*Editar*@
+                            <i class="fas fa-edit">  Editar</i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formUsuario">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloModal"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="IdUsuario" name="IdUsuario" />
+                    <input type="hidden" id="Accion" name="Accion" />
+
+                    <div class="mb-2">
+                        <label>Nombres</label>
+                        <input type="text" class="form-control" id="Nombres" name="Nombres" required />
+                    </div>
+                    <div class="mb-2">
+                        <label>Apellidos</label>
+                        <input type="text" class="form-control" id="Apellidos" name="Apellidos" required />
+                    </div>
+                    <div class="mb-2">
+                        <label>Usuario</label>
+                        <input type="text" class="form-control" id="UserName" name="UserName" required />
+                    </div>
+                    <div class="mb-2">
+                        <label>Contraseña</label>
+                        <input type="password" class="form-control" id="Clave" name="Clave" />
+                    </div>
+                    <div class="mb-2">
+                        <label>Correo</label>
+                        <input type="email" class="form-control" id="Correo" name="Correo" />
+                    </div>
+                    <div class="mb-2">
+                        <label>Rol</label>
+                        <select id="IdRol" name="IdRol" class="form-select">
+                            @foreach (var r in ViewBag.Roles)
+                            {
+                                <option value="@r.IdRol">@r.Descripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label>Estado</label>
+                        <select id="IdEstado" name="IdEstado" class="form-select">
+                            @foreach (var e in ViewBag.Estados)
+                            {
+                                <option value="@e.IdEstado">@e.Descripcion</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label>Categoría</label>
+                        <select id="IdCategoria" name="IdCategoria" class="form-select">
+                            @foreach (var c in ViewBag.Categorias)
+                            {
+                                <option value="@c.IdCategoria">@c.Descripcion</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Incluye SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+    function abrirModal(accion, boton = null) {
+        document.getElementById("Accion").value = accion;
+        document.getElementById("tituloModal").innerText = accion === 'INSERT' ? "Nuevo Usuario" : "Editar Usuario";
+
+        if (accion === 'UPDATE' && boton) {
+            document.getElementById("IdUsuario").value = boton.dataset.id;
+            document.getElementById("Nombres").value = boton.dataset.nombres;
+            document.getElementById("Apellidos").value = boton.dataset.apellidos;
+            document.getElementById("UserName").value = boton.dataset.username;
+            document.getElementById("Correo").value = boton.dataset.correo;
+
+            setDropdownValue("IdRol", boton.dataset.rol);
+            setDropdownValue("IdEstado", boton.dataset.estado);
+            setDropdownValue("IdCategoria", boton.dataset.categoria);
+
+            document.getElementById("Clave").value = "";
+        } else {
+            document.getElementById("formUsuario").reset();
+        }
+    }
+
+    function setDropdownValue(id, text) {
+        let select = document.getElementById(id);
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].text === text) {
+                select.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // Guardar usuario por AJAX con SweetAlert
+    document.getElementById("formUsuario").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        let formData = new FormData(this);
+
+        fetch('@Url.Action("GuardarUsuario", "Home")', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Éxito',
+                    text: data.mensaje,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.mensaje
+                });
+            }
+        })
+        .catch(err => console.error(err));
+    });
+    </script>
+}

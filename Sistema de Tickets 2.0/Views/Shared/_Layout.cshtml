@@ -1,0 +1,336 @@
+﻿@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString()?.ToLower();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString()?.ToLower();
+
+    var nombreUsuario = HttpContextAccessor.HttpContext.Session.GetString("NombreUsuario");
+
+    var permisosString = HttpContextAccessor.HttpContext.Session.GetString("Permisos");
+
+    var permisos = string.IsNullOrEmpty(permisosString)
+        ? new List<string>()
+        : permisosString.Split(',').Select(p => p.Trim()).ToList();
+
+    bool Tiene(string permiso) => permisos.Contains(permiso);
+
+    bool IsActive(string action, string controller = "home")
+        => currentAction == action.ToLower() &&
+           currentController == controller.ToLower();
+
+    bool IsMenuOpen(params string[] actions)
+        => actions.Any(a => a.ToLower() == currentAction);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Sistema_de_Tickets_2._0</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Sistema_de_Tickets_2._0.styles.css" asp-append-version="true" />
+    @*<title>SB Admin 2 - Cards</title>*@
+
+    <!-- Custom fonts for this template-->
+    <link href="~/sbadmin2/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+          rel="stylesheet">
+
+    <!-- Custom styles for this template-->
+    <link href="~/sbadmin2/css/sb-admin-2.min.css" rel="stylesheet">
+</head>
+
+<body id="page-top">
+
+    <div id="wrapper">
+
+        <!-- SIDEBAR -->
+        <ul class="navbar-nav bg-black sidebar sidebar-dark accordion" id="accordionSidebar">
+
+            <!-- Brand -->
+            <a class="sidebar-brand d-flex align-items-center justify-content-center"
+               asp-controller="Home" asp-action="Index">
+                <div class="sidebar-brand-icon rotate-n-15">
+                    <i class="fas fa-ticket-alt"></i>
+                </div>
+                <div class="sidebar-brand-text mx-3">Sistema Tickets</div>
+            </a>
+
+            <hr class="sidebar-divider my-0">
+
+            <!-- DASHBOARD -->
+            @if (Tiene("INDEX_VER"))
+            {
+                <li class="nav-item @(IsActive("index") ? "active" : "")">
+                    <a class="nav-link" asp-controller="Home" asp-action="Index">
+                        <i class="fas fa-fw fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+            }
+
+            <hr class="sidebar-divider">
+
+            <!-- ADMINISTRACION -->
+            @if (Tiene("USUARIOS_VER") ||
+              Tiene("URGENCIAS_TICKET_VER") ||
+              Tiene("INCIDENCIAS_TICKET_VER") ||
+              Tiene("CAJAS_VER") ||
+              Tiene("EQUIPOS_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("usuarios","tipourgenciatickets","incidenciastickets","cajas","equipos") ? "active" : "")">
+
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
+                       data-target="#collapseAdmin">
+                        <i class="fas fa-fw fa-cog"></i>
+                        <span>Administración</span>
+                    </a>
+
+                    <div id="collapseAdmin"
+                         class="collapse @(IsMenuOpen("usuarios","tipourgenciatickets","incidenciastickets","cajas","equipos") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("USUARIOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("usuarios") ? "active" : "")"
+                                   asp-controller="Home" asp-action="Usuarios">
+                                    <i class="fas fa-user"></i> Usuarios
+                                </a>
+                            }
+
+                            @if (Tiene("URGENCIAS_TICKET_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tipourgenciatickets") ? "active" : "")"
+                                   asp-controller="Home" asp-action="TipoUrgenciaTickets">
+                                    <i class="fas fa-clock"></i> Urgencias
+                                </a>
+                            }
+
+                            @if (Tiene("INCIDENCIAS_TICKET_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("incidenciastickets") ? "active" : "")"
+                                   asp-controller="Home" asp-action="IncidenciasTickets">
+                                    <i class="fas fa-tools"></i> Incidencias
+                                </a>
+                            }
+
+                            @if (Tiene("CAJAS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("cajas") ? "active" : "")"
+                                   asp-controller="Home" asp-action="Cajas">
+                                    <i class="fas fa-cash-register"></i> Cajas
+                                </a>
+                            }
+
+                            @if (Tiene("EQUIPOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("equipos") ? "active" : "")"
+                                   asp-controller="Home" asp-action="Equipos">
+                                    <i class="fas fa-desktop"></i> Equipos IT
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+
+            <!-- SOLICITUDES -->
+            @if (Tiene("TICKET_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("tickets") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
+                       data-target="#collapseTickets">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Solicitudes</span>
+                    </a>
+
+                    <div id="collapseTickets"
+                         class="collapse @(IsMenuOpen("tickets") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            <a class="collapse-item @(IsActive("tickets") ? "active" : "")"
+                               asp-controller="Home" asp-action="Tickets">
+                                <i class="fas fa-tags"></i> Tickets
+                            </a>
+                        </div>
+                    </div>
+                </li>
+            }
+            <!-- BODEGA -->
+            @if (Tiene("PERMISOS_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("tiposincidenciasreclamos","reclamos") ? "active" : "")">
+
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
+                       data-target="#collapseReclamos">
+                        <i class="fas fa-boxes"></i>
+                        <span>Bodega</span>
+                    </a>
+
+                    <div id="collapseReclamos"
+                         class="collapse @(IsMenuOpen("tiposincidenciasreclamos","reclamos") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("INCIDENCIAS_RECLAMOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tiposincidenciasreclamos") ? "active" : "")"
+                                   asp-controller="ReclamosBodega" asp-action="TiposIncidenciasReclamos">
+                                    Tipo de incidencia
+                                </a>
+                            }
+                            @if (Tiene("RECLAMOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("reclamos") ? "active" : "")"
+                                   asp-controller="ReclamosBodega" asp-action="Reclamos">
+                                  Reclamos
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+            <!-- SEGURIDAD -->
+            @if (Tiene("PERMISOS_VER") || Tiene("ROLES_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("permisos","rolesypermisos") ? "active" : "")">
+
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
+                       data-target="#collapseSeguridad">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Seguridad</span>
+                    </a>
+
+                    <div id="collapseSeguridad"
+                         class="collapse @(IsMenuOpen("permisos","rolesypermisos") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("PERMISOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("permisos") ? "active" : "")"
+                                   asp-controller="Home" asp-action="Permisos">
+                                    Permisos
+                                </a>
+                            }
+
+                            @if (Tiene("ROLES_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("rolesypermisos") ? "active" : "")"
+                                   asp-controller="Home" asp-action="RolesyPermisos">
+                                    Roles y Permisos
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+
+
+            <hr class="sidebar-divider d-none d-md-block">
+
+            <div class="text-center d-none d-md-inline">
+                <button class="rounded-circle border-0" id="sidebarToggle"></button>
+            </div>
+
+        </ul>
+
+        <!-- CONTENT WRAPPER -->
+        <div id="content-wrapper" class="d-flex flex-column">
+            <div id="content">
+
+                <!-- TOPBAR -->
+                <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+
+                    <ul class="navbar-nav ml-auto">
+
+                        <li class="nav-item dropdown no-arrow">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown"
+                               role="button" data-toggle="dropdown">
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">
+                                    @nombreUsuario
+                                </span>
+                                <img class="img-profile rounded-circle"
+                                     src="~/sbadmin2/img/undraw_profile.svg">
+                            </a>
+
+                            <div class="dropdown-menu dropdown-menu-right shadow">
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                                    Profile
+                                </a>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
+                                    Settings
+                                </a>
+                                <a class="dropdown-item" href="#">
+                                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
+                                    Activity Log
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item"
+                                   asp-controller="Acceso"
+                                   asp-action="Logout">
+                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                                    Cerrar Sesión
+                                </a>
+                            </div>
+                        </li>
+
+                    </ul>
+                </nav>
+
+                <div class="container-fluid">
+                    @RenderBody()
+                </div>
+
+            </div>
+
+            <!-- FOOTER -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto text-center">
+                    <span class="text-muted">
+                        © @DateTime.Now.Year - Sistema de Tickets |
+                        Desarrollado por Ing. Abraham Reyes
+                    </span>
+                </div>
+            </footer>
+
+        </div>
+
+    </div>
+    <!-- Bootstrap core JavaScript-->
+    <script src="~/sbadmin2/vendor/jquery/jquery.min.js"></script>
+    <script src="~/sbadmin2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/sbadmin2/js/demo/datatables-demo.js"></script>
+    <!-- Core plugin JavaScript-->
+    <script src="~/sbadmin2/vendor/jquery-easing/jquery.easing.min.js"></script>
+
+    <!-- Custom scripts for all pages-->
+    <script src="~/sbadmin2/js/sb-admin-2.min.js"></script>
+
+
+
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+</body>
+</html>

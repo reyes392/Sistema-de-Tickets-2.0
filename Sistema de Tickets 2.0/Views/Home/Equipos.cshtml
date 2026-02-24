@@ -1,0 +1,136 @@
+﻿@model List<E_Equipos>
+@using Capa_Entidad.Tickets
+@{
+    ViewData["Title"] = "Equipos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<h1 class="text-center">Equipos</h1>
+
+<button class="btn btn-primary mb-3 " data-bs-toggle="modal" data-bs-target="#modalEquipos" onclick="abrirModal('INSERT')">
+    <i class="fas fa-plus">  Nuevo Equipo</i>
+</button>
+
+<div class="table-responsive shadow">
+    <table class="table table-bordered table-striped" id="tblEquipos">
+        <thead class="table-dark">
+            <tr>
+                <th>Descripcion</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Model)
+            {
+                <tr data-id="@u.IdEquipos">
+                    <td>@u.Descripcion</td>
+
+                    <td>
+                        <button class="btn btn-sm btn-warning"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalEquipos"
+                                data-id="@u.IdEquipos"
+                                data-descripcion="@u.Descripcion"
+                                onclick="abrirModal('UPDATE', this)">
+                            @*Editar*@
+                            <i class="fas fa-edit">  Editar</i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalEquipos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formEquipos">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloModal"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="IdEquipos" name="IdEquipos" />
+                    <input type="hidden" id="Accion" name="Accion" />
+
+                    <div class="mb-2">
+                        <label>Descripcion</label>
+                        <input type="text" class="form-control" id="Descripcion" name="Descripcion" required    maxlength="100"/>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <!-- Incluye SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+    function abrirModal(accion, boton = null) {
+        document.getElementById("Accion").value = accion;
+        document.getElementById("tituloModal").innerText = accion === 'INSERT' ? "Nuevo Equipo" : "Editar Equipo";
+
+        if (accion === 'UPDATE' && boton) {
+            document.getElementById("IdEquipos").value = boton.dataset.id;
+            document.getElementById("Descripcion").value = boton.dataset.descripcion;
+        
+        } else {
+            document.getElementById("formEquipos").reset();
+        }
+    }
+
+    function setDropdownValue(id, text) {
+        let select = document.getElementById(id);
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].text === text) {
+                select.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // Guardar usuario por AJAX con SweetAlert
+        document.getElementById("formEquipos").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        let formData = new FormData(this);
+
+        fetch('@Url.Action("GuardarEquipos", "Home")', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Éxito',
+                    text: data.mensaje,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.mensaje
+                });
+            }
+        })
+        .catch(err => console.error(err));
+    });
+    </script>
+}
+

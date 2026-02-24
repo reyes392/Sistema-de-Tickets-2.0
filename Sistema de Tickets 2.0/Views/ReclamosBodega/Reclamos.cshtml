@@ -1,0 +1,811 @@
+﻿@model List<Capa_Entidad.ReclamosBodega.E_ReclamosBodega>
+@using Capa_Entidad.ReclamosBodega
+@{
+    ViewData["Title"] = "Reclamos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    /* Estilos para el Chat */
+    #chatBox {
+        height: 350px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        gap: 12px;
+    }
+
+    .chat-message {
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        position: relative;
+        font-size: 0.9rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .chat-left {
+        align-self: flex-start;
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        color: #333;
+    }
+
+    .chat-right {
+        align-self: flex-end;
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    .chat-time {
+        font-size: 0.65rem;
+        display: block;
+        margin-top: 4px;
+        opacity: 0.7;
+    }
+
+    .chat-user {
+        font-size: 0.7rem;
+        font-weight: bold;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .notif-badge {
+        font-size: 0.6rem;
+        padding: 4px 6px;
+        margin-left: 5px;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        @* --- LISTADO DE RECLAMOS --- *@
+        <div class="col-md-6 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><i class="fas fa-ticket-alt"></i> Listado de Reclamos</h2>
+                <button class="btn btn-primary shadow-sm" onclick="abrirModalNuevo()">
+                    <i class="fas fa-plus-circle"></i> Nuevo Reclamo
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover shadow-sm border" id="tblReclamos">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Solicitante</th>
+                            <th>Incidencia</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            <tr id="row-@t.IdReclamo">
+                                <td>
+                                    <span class="fw-bold">@t.IdReclamo</span>
+                                    <span id="notif-@t.IdReclamo" class="badge rounded-pill bg-danger d-none notif-badge">
+                                        <i class="fas fa-comment"></i>
+                                    </span>
+                                </td>
+                                <td>@t.UsuarioSolicitador</td>
+                                <td>@t.TipoIncidenciaReclamo</td>
+                                <td>@t.Registro</td>
+                                <td>
+                                    <span class="badge @(t.Estado == "Pendiente" ? "bg-warning text-dark" : (t.Estado == "Cerrado" ? "bg-success" : "bg-info"))">
+                                        @t.Estado
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary btn-ver" data-info='@Json.Serialize(t)'>
+                                        <i class="fas fa-eye"></i> Ver
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* --- DETALLE DEL RECLAMO --- *@
+        <div class="col-md-6 bg-light p-4" id="seccionDetalle" style="display:none; min-height: 85vh;">
+            <ul class="nav nav-tabs" id="ticketTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                        <i class="fas fa-info-circle"></i> Gestión
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold" id="tabChat" data-bs-toggle="tab" data-bs-target="#chatTab" type="button" onclick="marcarComoLeido(); cargarComentarios(); iniciarRefrescoChat();">
+                        <i class="fas fa-comments"></i> Chat / Notas
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#adjuntosTab" type="button">
+                        <i class="fas fa-paperclip"></i> Adjuntos
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content border border-top-0 p-4 bg-white shadow-sm">
+                @* Pestaña Información *@
+                <div class="tab-pane fade show active" id="info">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="text-primary m-0">Reclamo #<span id="lblIdReclamo"></span></h5>
+                        <span id="badgeEstado" class="badge p-2"></span>
+                    </div>
+
+                    <div class="row g-2 mb-4 border-bottom pb-3">
+                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong># Requisa:</strong> <span id="txtNrequisa" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Fecha de Requisa:</strong> <span id="txtFechaRequisa" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Asignado a :</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-bold small">Descripción del Problema:</label>
+                        <textarea id="txtDetalleProblema" class="form-control bg-light" rows="3" readonly></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold small text-success">Resolución Técnica:</label>
+                        <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-4 small text-muted">
+                        <span>Registro: <b id="lblRegistro"></b></span>
+                        <span>Modif: <b id="lblModif"></b></span>
+                    </div>
+
+                    <div id="contenedorBotonGuardar">
+                        <button id="btnGuardarReclamo" class="btn btn-success w-100" onclick="guardarCambiosReclamos()">
+                            <i class="fas fa-save"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </div>
+
+                @* Pestaña Chat *@
+                <div class="tab-pane fade" id="chatTab">
+                    <div id="chatBox"></div>
+                    <div id="divPreviewChat" class="mt-2" style="display:none;">
+                        <span class="badge bg-info text-dark">
+                            <i class="fas fa-paperclip"></i> <span id="lblNombreArchivoChat"></span>
+                            <i class="fas fa-times ms-2" style="cursor:pointer" onclick="limpiarArchivoChat()"></i>
+                        </span>
+                    </div>
+                    <div class="input-group mt-3" id="contenedorEscrituraChat">
+                        <input type="file" id="fArchivoChat" style="display:none" onchange="seleccionarArchivoChat(this)" />
+                        <button class="btn btn-outline-secondary" type="button" onclick="$('#fArchivoChat').click()">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <input type="text" id="txtMensajeChat" class="form-control" placeholder="Escribe un comentario..." onkeypress="if(event.keyCode==13) enviarComentario()">
+                        <button class="btn btn-primary" type="button" onclick="enviarComentario()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @* Pestaña Adjuntos *@
+                <div class="tab-pane fade" id="adjuntosTab">
+                    <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
+                    <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 d-flex align-items-center justify-content-center bg-light border" id="detalleVacio" style="min-height: 85vh;">
+            <div class="text-center text-muted">
+                <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
+                <p>Selecciona un ticket de la lista para ver el detalle</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* --- MODAL NUEVO Reclamo --- *@
+<div class="modal fade" id="modalNuevoReclamo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle"></i> Nuevo Reclamo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Tipo de Incidencia</label>
+                    <select id="cboIncidencia" class="form-select border-primary">
+                        @foreach (var item in ViewBag.Incidencias)
+                        {
+                            <option value="@item.IdTiposIncidenciasReclamo">@item.Descripcion</option>
+                        }
+                    </select>
+                </div>
+
+
+                @* --- agregando nuevos --- *@
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Numero de Requisa</label>
+                    <input type="text" class="form-control" id="Nrequisa" autocomplete="off" maxlength="20" placeholder="A123456789">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Fecha de la requisa</label>
+                    <input class="form-control" type="text" id="FechaRequisa" autocomplete="off" maxlength="20"  placeholder="25/01/2026">
+                </div>
+
+                @* ---  --- *@
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
+                    <textarea id="nuevoProblema" class="form-control" rows="3" placeholder="Detalla lo que está ocurriendo..." maxlength="500"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-primary">
+                        <i class="fas fa-paperclip"></i> Adjuntar Archivos y Videos (Opcional)
+                    </label>
+                    <input type="file" id="fArchivos" class="form-control" multiple
+                           accept="image/*,video/mp4,video/x-m4v,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
+                    <div class="form-text" style="font-size: 0.75rem;">
+                        Puedes subir imágenes, documentos o videos cortos (MP4).
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-link text-muted" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="crearReclamo()">Crear Reclamo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // --- 1. VARIABLES GLOBALES Y ESTADO ---
+      /*  let ticketSeleccionado = null;      // Guarda el objeto del ticket que se está viendo*/
+        let reclamoSeleccionado = null;      // Guarda el objeto del ticket que se está viendo
+        let chatTimer = null;               // Timer para refrescar el chat cada 3 segundos
+        let tituloOriginal = document.title;// Guarda "Tickets - Mi Sistema"
+        let intervaloPestaña = null;        // Timer para el parpadeo del título
+        let ultimoIdComentarioVisto = {};   // Diccionario { idTicket: ultimoIdChat } para badges rojos
+        /*  let versionTicketsActual = "";      // Sello de versión (ej: "12-48") para detectar cambios*/
+        let versionReclamoActual = ""; // Sello de versión (ej: "12-48") para detectar cambios*/
+
+        // Datos de sesión desde C#
+        const idUsuarioLogueado = parseInt('@ViewBag.IdUsuarioLogueado') || 0;
+        const nombreTecnicoLogueado = '@ViewBag.NombreUsuarioLogueado';
+        const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
+
+        $(document).ready(function () {
+            // --- 2. INICIALIZACIÓN ---
+
+            // Consultamos el estado real de cada chat al cargar la página
+            $(".btn-ver").each(function () {
+                let $btn = $(this);
+                let info = $btn.data("info");
+                let id = info.idReclamo || info.idReclamo;
+
+                // Usamos el nuevo método que devuelve ultimoId e idAutor
+                $.get('@Url.Action("ObtenerEstadoChat", "ReclamosBodega")', { idReclamo: id }, function (res) {
+
+                    // 1. Sincronizamos nuestro registro local para que el monitor sepa el punto de partida
+                    ultimoIdComentarioVisto[id] = res.ultimoId;
+
+                    // 2. LÓGICA DE CARGA INMEDIATA:
+                    // Si hay mensajes Y el último no lo escribí yo (el usuario logueado)
+                    if (res.ultimoId > 0 && res.idAutor !== idUsuarioLogueado) {
+                        // Mostramos el badge rojo de inmediato
+                        $(`#notif-${id}`).removeClass("d-none");
+                    } else {
+                        // Por seguridad, aseguramos que esté oculto si el último mensaje es mío
+                        $(`#notif-${id}`).addClass("d-none");
+                    }
+                });
+            });
+
+            // Obtenemos la "versión" actual de la base de datos al cargar
+            $.get('@Url.Action("ObtenerVersionReclamos", "ReclamosBodega")', function (v) {
+                versionReclamoActual = v;
+            });
+
+            // --- 3. TIMERS (MONITORES) ---
+
+            // Monitor de cambios en la tabla (Nuevos tickets o cambios de estado)
+            setInterval(verificarCambiosReclamo, 10000);
+
+            // Monitor de mensajes nuevos en el chat (Badges rojos)
+            // Este seguirá funcionando cada 6 seg para mensajes que lleguen mientras estás conectado
+            setInterval(monitorearMensajesNuevos, 6000);
+        });
+
+
+        // --- 4. FUNCIÓN: DETECTAR CAMBIOS EN EL SERVIDOR (Para todos los usuarios) ---
+        function verificarCambiosReclamo() {
+            // Quitamos el IF de rolUsuarioLogueado para que el Solicitante también actualice
+            $.get('@Url.Action("ObtenerVersionReclamos", "ReclamosBodega")', function (nuevaVersion) {
+
+                // Si el sello "Conteo-Suma" cambió, algo pasó en la DB
+                if (versionReclamoActual !== "" && nuevaVersion !== versionReclamoActual) {
+                    versionReclamoActual = nuevaVersion;
+
+                    refrescarTablaReclamos(); // Actualiza la tabla sin F5
+               
+
+                    // Notificamos visualmente en la pestaña solo si no es el usuario que está mirando el detalle
+                    if (!intervaloPestaña) {
+                        intervaloPestaña = setInterval(() => {
+                            document.title = (document.title === tituloOriginal) ? "✨ ACTUALIZACIÓN ✨" : tituloOriginal;
+                        }, 1000);
+                    }
+
+                    // Si el usuario tenía un ticket abierto y este cambió, actualizamos los datos del detalle
+                    if (reclamoSeleccionado) {
+                        const idAbierto = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
+                        // Buscamos el botón de ese ticket en la nueva tabla para obtener su nueva data
+                        const $btnNuevo = $(`.btn-ver[data-info*='"idReclamo":${idAbierto}']`).first()
+                                       || $(`.btn-ver[data-info*='"idReclamo":${idAbierto}']`).first();
+
+                        if ($btnNuevo.length > 0) {
+                            reclamoSeleccionado = $btnNuevo.data("info");
+                            // Opcional: podrías llamar a verDetalle(ticketSeleccionado)
+                            // si quieres que los badges y botones cambien al instante
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- 5. FUNCIÓN: REFRESCO SILENCIOSO DE TABLA ---
+        function refrescarTablaReclamos() {
+            // Pedimos el HTML de la página actual por debajo
+            $.get(window.location.href, function (data) {
+                // Extraemos solo el contenido del <tbody> de la respuesta
+                const nuevoContenido = $(data).find("#tblReclamos tbody").html();
+                // Lo reemplazamos en nuestra tabla visible
+                $("#tblReclamos tbody").html(nuevoContenido);
+                console.log("Tabla actualizada dinámicamente.");
+            });
+        }
+
+        // --- 6. EVENTO: VER DETALLE (CLICK EN TABLA) ---
+        $(document).on("click", ".btn-ver", function () {
+            let $btn = $(this);
+            let info = $btn.data("info");
+            const idReclamo = info.IdReclamo || info.idReclamo;
+
+            // Al hacer click, limpiamos el aviso parpadeante del título
+            if (intervaloPestaña) {
+                clearInterval(intervaloPestaña);
+                intervaloPestaña = null;
+                document.title = tituloOriginal;
+            }
+
+            const idAsignadoActual = info.IdUsuarioAsignado || info.idUsuarioAsignado;
+
+            // Auto-asignación: Si no tiene técnico y yo soy Staff
+            if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {
+                $.post('@Url.Action("TomarReclamo", "ReclamosBodega")', { idReclamo: idReclamo }, function (res) {
+                    if (res.success) {
+                        // Actualizamos el objeto local y la fila visualmente
+                        info.IdEstado = 5;
+                        info.Estado = "En Proceso";
+                        info.IdUsuarioAsignado = idUsuarioLogueado;
+                        info.UsuarioAsignado = nombreTecnicoLogueado;
+                        $btn.data("info", info);
+                        $btn.closest("tr").find(".badge").first().text("En Proceso").attr("class", "badge bg-info");
+                    }
+                    verDetalle(info);
+                });
+            } else {
+                verDetalle(info);
+            }
+        });
+
+       function verDetalle(reclamo) {
+            if (!reclamo) return;
+            if (chatTimer) clearInterval(chatTimer);
+
+            // --- LIMPIEZA FORZADA DE CAMPOS ---
+            // Esto asegura que no veas lo del ticket anterior mientras carga el nuevo
+            $("#txtResolucion").val("");
+            $("#txtDetalleProblema").val("");
+            $("#chatBox").html("");
+
+           reclamoSeleccionado = reclamo;
+
+            $("#seccionDetalle").show();
+            $("#detalleVacio").hide();
+
+            // Reset a la primera pestaña (Información)
+            const firstTab = new bootstrap.Tab(document.querySelector('#ticketTabs button[data-bs-target="#info"]'));
+            firstTab.show();
+
+            const id = reclamo.idReclamo || reclamo.IdReclamo;
+            const estado = reclamo.estado || reclamo.Estado;
+           const idAsignado = reclamo.idUsuarioAsignado || reclamo.IdUsuarioAsignado;
+            const esStaff = (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3);
+
+            const formatearFecha = (f) => {
+                if (!f) return "N/A";
+                let d = new Date(f);
+                return isNaN(d) ? f : d.toLocaleString();
+            };
+
+            // Llenado de etiquetas (Usamos .text para labels y .val para textareas)
+           $("#lblIdReclamo").text(id);
+           $("#txtSolicitante").text(reclamo.usuarioSolicitador || reclamo.UsuarioSolicitador || "N/A");
+           // --- CORRECCIÓN DE INCIDENCIA ---
+           // Usamos el nombre exacto de la entidad C#
+           $("#txtIncidencia").text(reclamo.tipoIncidenciaReclamo || reclamo.TipoIncidenciaReclamo || "N/A");
+           $("#txtNrequisa").text(reclamo.nrequisa || reclamo.Nrequisa || "N/A");
+
+           // --- CORRECCIÓN DE FECHA REQUISA ---
+           $("#txtFechaRequisa").text(reclamo.fechaRequisa || reclamo.FechaRequisa || "N/A");
+            $("#txtAsignado").text(reclamo.usuarioAsignado || reclamo.UsuarioAsignado || "N/A");
+            $("#lblRegistro").text(formatearFecha(reclamo.registro || reclamo.Registro));
+            $("#lblModif").text(formatearFecha(reclamo.modificacion || reclamo.Modificacion));
+
+            // IMPORTANTE: Usar .val() para que el textarea se refresque correctamente
+            $("#txtDetalleProblema").val(reclamo.problema || reclamo.Problema || "N/A");
+            $("#txtResolucion").val(reclamo.resolucion || reclamo.Resolucion || "");
+
+            // Badge de estado
+            let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
+            $("#badgeEstado").text(estado).removeClass("bg-warning bg-info bg-success text-dark").addClass(colorClass);
+
+            // Lógica de Seguridad para edición
+            let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 1 || idAsignado === idUsuarioLogueado));
+            if (puedeEditar) {
+                $("#btnGuardarReclamo").show();
+                $("#txtResolucion, #txtDetalleProblema").prop("readonly", false).removeClass("bg-light");
+            } else {
+                $("#btnGuardarReclamo").hide();
+                $("#txtResolucion, #txtDetalleProblema").prop("readonly", true).addClass("bg-light");
+            }
+
+            // Carga de chat y adjuntos
+            actualizarChatSilencioso();
+            marcarComoLeido();
+            cargarAdjuntos(id);
+        }
+        // --- 7. FUNCIONES DE CHAT ---
+        function marcarComoLeido() {
+            if (!reclamoSeleccionado) return;
+            const id = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
+            $(`#notif-${id}`).addClass("d-none");
+            $.get('@Url.Action("ObtenerUltimoComentarioId", "ReclamosBodega")', { idReclamo: id }, function (res) {
+                ultimoIdComentarioVisto[id] = res.ultimoId;
+            });
+        }
+
+        function iniciarRefrescoChat() {
+            if (chatTimer) clearInterval(chatTimer);
+            chatTimer = setInterval(() => {
+                if ($("#chatTab").hasClass("active")) actualizarChatSilencioso();
+            }, 3000);
+        }
+
+
+        function actualizarChatSilencioso() {
+            if (!reclamoSeleccionado) return;
+            const idReclamo = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
+
+            $.get('@Url.Action("ObtenerComentarios", "ReclamosBodega")', { idReclamo: idReclamo }, function (data) {
+                let html = "";
+                data.forEach(c => {
+                    const claseMio = c.esMio ? "chat-right" : "chat-left";
+                    const ruta = c.rutaArchivo || c.RutaArchivo;
+                    const ext = (c.extension || c.Extension || "").toLowerCase();
+
+                    html += `<div class="chat-message ${claseMio}"><span class="chat-user">${c.nombreUsuario}</span><div>${c.mensaje || ""}</div>`;
+
+                    if (ruta) {
+                        // --- SI ES VIDEO: Mostramos un botón/icono para abrirlo ---
+                        if (ext.match(/(mp4|webm|ogg)$/i)) {
+                            html += `
+                                <div class="mt-2">
+                                    <a href="${ruta}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm d-inline-flex align-items-center">
+                                        <i class="fas fa-play-circle fa-2x me-2"></i>
+                                        <div class="text-start">
+                                            <small class="d-block fw-bold">Ver Video</small>
+                                            <span style="font-size: 0.65rem;">Haga clic para reproducir</span>
+                                        </div>
+                                    </a>
+                                </div>`;
+                        }
+                        // --- SI ES IMAGEN: Mantenemos la miniatura ---
+                        else if (ext.match(/(jpg|jpeg|png|gif)$/i)) {
+                            html += `<a href="${ruta}" target="_blank"><img src="${ruta}" class="img-fluid rounded mt-2 border" style="max-height:150px"></a>`;
+                        }
+                        // --- OTROS ARCHIVOS ---
+                        else {
+                            html += `<div class="mt-2"><a href="${ruta}" target="_blank" class="btn btn-sm btn-light border small"><i class="fas fa-file"></i> Ver Adjunto</a></div>`;
+                        }
+                    }
+                    html += `<span class="chat-time">${c.fecha}</span></div>`;
+                });
+
+                if ($("#chatBox").html().length !== html.length) {
+                    $("#chatBox").html(html).scrollTop($("#chatBox")[0].scrollHeight);
+                    marcarComoLeido();
+                }
+            });
+        }
+
+        function cargarComentarios() {
+            if (!reclamoSeleccionado) return;
+            $("#chatBox").html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+            actualizarChatSilencioso();
+        }
+
+        function enviarComentario() {
+            const msg = $("#txtMensajeChat").val().trim();
+            const file = $("#fArchivoChat")[0].files[0];
+            if (!msg && !file) return;
+
+
+            let formData = new FormData();
+            formData.append("idReclamo", reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo);
+            formData.append("mensaje", msg);
+            if (file) formData.append("archivo", file);
+
+            $.ajax({
+                url: '@Url.Action("GuardarComentario", "ReclamosBodega")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(res) {
+                    Swal.close(); // Cerramos el cargando al terminar
+                    if (res.success) {
+                        $("#txtMensajeChat").val("");
+                        limpiarArchivoChat();
+                        actualizarChatSilencioso();
+                    } else {
+                        Swal.fire('Error', res.mensaje || 'No se pudo enviar', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.close();
+                    Swal.fire('Error', 'Ocurrió un error en el servidor', 'error');
+                }
+            });
+        }
+
+        function monitorearMensajesNuevos() {
+            $(".btn-ver").each(function() {
+                let id = $(this).data("info").IdReclamo || $(this).data("info").idReclamo;
+
+                $.get('@Url.Action("ObtenerEstadoChat", "ReclamosBodega")', { idReclamo: id }, function (res) {
+                    // Actualizamos el ID global por si hay cambios
+                    ultimoIdComentarioVisto[id] = res.ultimoId;
+
+                    // Si el último no soy yo, evaluar si mostrar badge
+                    if (res.ultimoId > 0 && res.idAutor !== idUsuarioLogueado) {
+                        const reclamoAbiertoId = reclamoSeleccionado?.IdReclamo || reclamoSeleccionado?.idReclamo;
+
+                        // Si no es el ticket que tengo abierto O si tengo abierta la pestaña de Info y no la de Chat
+                        if (reclamoAbiertoId != id || !$("#chatTab").hasClass("active")) {
+                            $(`#notif-${id}`).removeClass("d-none");
+                        }
+                    } else {
+                        // Si yo respondí o no hay mensajes, desaparece
+                        $(`#notif-${id}`).addClass("d-none");
+                    }
+                });
+            });
+        }
+
+        // --- 9. OTRAS UTILIDADES ---
+        function seleccionarArchivoChat(input) {
+            if (input.files.length > 0) {
+                const file = input.files[0];
+
+                // Mostramos el nombre del archivo
+                $("#lblNombreArchivoChat").text(file.name);
+                $("#divPreviewChat").show();
+
+                // Si es una imagen, generamos una miniatura rápida
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        // Creamos o actualizamos un elemento <img> para la vista previa
+                        if ($("#imgMiniaturaChat").length === 0) {
+                            $("#divPreviewChat").prepend('<img id="imgMiniaturaChat" src="" style="max-height: 50px; margin-right: 10px; border-radius: 5px; border: 1px solid #ddd;">');
+                        }
+                        $("#imgMiniaturaChat").attr("src", e.target.result).show();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Si no es imagen (ej. un PDF), escondemos la miniatura si existía
+                    $("#imgMiniaturaChat").hide();
+                }
+            }
+        }
+        function limpiarArchivoChat() {
+            $("#fArchivoChat").val("");
+            $("#divPreviewChat").hide();
+            $("#imgMiniaturaChat").hide(); // Limpiamos la miniatura
+        }
+        function cargarAdjuntos(id) {
+            $.get('@Url.Action("ObtenerAdjuntos", "ReclamosBodega")', { idReclamo: id }, function(data) {
+                let html = data.map(x => `<a href="${x.ruta}" target="_blank" class="list-group-item list-group-item-action small">${x.nombreOriginal}</a>`).join('');
+                $("#listaAdjuntos").html(html || '<div class="p-3 text-center text-muted small">No hay archivos</div>');
+            });
+        }
+
+        function abrirModalNuevo() { $("#modalNuevoReclamo").modal("show"); }
+     
+        function crearReclamo() {
+            // Validar que el problema no esté vacío antes de enviar
+            if ($("#nuevoProblema").val().trim() === "") {
+                Swal.fire('Atención', 'Por favor describe el problema', 'warning');
+                return;
+            }
+
+            const reclamo = {
+                IdReclamo: 0,
+                IdTipoIncidencia: parseInt($("#cboIncidencia").val()),
+                // Corregidos para que coincidan con los id del HTML:
+                Nrequisa: $("#Nrequisa").val(),
+                FechaRequisa: $("#FechaRequisa").val(),
+                Problema: $("#nuevoProblema").val(),
+                IdEstado: 3
+            };
+
+            console.log("Datos a enviar:", reclamo); // Para que veas en la consola si se armó bien
+            enviarDatos(reclamo, "INSERT", "#fArchivos");
+        }
+
+        function guardarCambiosReclamos() {
+            if (!reclamoSeleccionado) return;
+
+            const res = $("#txtResolucion").val().trim();
+            const nuevoEstadoId = (res !== "") ? 4 : 5;
+
+            // Obtenemos el ID correctamente (manejando mayúsculas/minúsculas del JSON)
+            const idActual = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
+
+            const reclamoData = {
+                IdReclamo: idActual,
+                // Agregamos estos campos aunque no se editen, para que el SP no falle por falta de parámetros
+                Nrequisa: reclamoSeleccionado.Nrequisa || reclamoSeleccionado.nrequisa,
+                FechaRequisa: reclamoSeleccionado.FechaRequisa || reclamoSeleccionado.fechaRequisa,
+                IdTipoIncidencia: reclamoSeleccionado.IdTipoIncidencia || reclamoSeleccionado.idTipoIncidencia || 0,
+
+                Problema: $("#txtDetalleProblema").val().trim(),
+                Resolucion: res,
+                IdEstado: nuevoEstadoId,
+                IdUsuarioAsignado: idUsuarioLogueado
+            };
+
+            Swal.fire({
+                title: '¿Guardar cambios?',
+                text: (nuevoEstadoId === 4) ? "El reclamo se CERRARÁ." : "Se actualizará el progreso.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, guardar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Guardando...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    let formData = new FormData();
+                    formData.append("Accion", "UPDATE");
+                    // Por esto:
+                    for (let key in reclamoData) {
+                        formData.append("reclamos." + key, reclamoData[key]);
+                    }
+
+                    $.ajax({
+                        url: '@Url.Action("GuardarReclamo", "ReclamosBodega")',
+                        type: "POST",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire('Éxito', 'reclamo actualizado', 'success').then(() => {
+                                    refrescarTablaReclamos();
+                                    // PASO CLAVE: Pasamos el objeto con el NUEVO estado para que verDetalle lo oculte
+                                    verDetalle(reclamoData);
+                                });
+                            } else {
+                                Swal.fire('Error', response.mensaje || 'No se pudo actualizar', 'error');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+       function enviarDatos(obj, accion, fileInputId = null) {
+            let formData = new FormData();
+            formData.append("Accion", accion);
+            for (let key in obj) { formData.append("reclamos." + key, obj[key]); }
+            if (fileInputId) {
+                let files = $(fileInputId)[0].files;
+                for (let i = 0; i < files.length; i++) { formData.append("archivos", files[i]); }
+            }
+            $.ajax({
+                url: '@Url.Action("GuardarReclamo", "ReclamosBodega")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    Swal.close();
+                    if (res.success) {
+                        $("#modalNuevoReclamo").modal("hide");
+                        Swal.fire('Listo', 'Operación exitosa', 'success').then(() => {
+                            refrescarTablaReclamos();
+                            // Limpiamos la vista de detalle para obligar a seleccionar de nuevo
+                            $("#seccionDetalle").hide();
+                            $("#detalleVacio").show();
+                            reclamoSeleccionado = null;
+                        });
+                    } else {
+                        Swal.fire('Error', res.mensaje || 'No se pudo guardar', 'error');
+                    }
+                }
+            });
+        }
+
+
+        // Escuchar el evento de pegado en toda la página
+        document.addEventListener('paste', function (e) {
+            // Solo si hay un ticket abierto
+            if (!reclamoSeleccionado) return;
+
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].kind === 'file') {
+                    const blob = items[i].getAsFile();
+
+                    // Creamos un contenedor de archivos para el input file
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(blob);
+
+                    // Lo asignamos al input real
+                    const inputArchivo = document.getElementById('fArchivoChat');
+                    inputArchivo.files = dataTransfer.files;
+
+                    // Cambiamos a la pestaña de chat si no está activa para que el usuario vea que se cargó
+                    const tabChat = document.querySelector('#ticketTabs button[data-bs-target="#chatTab"]');
+                    if (tabChat) {
+                        bootstrap.Tab.getInstance(tabChat)?.show() || new bootstrap.Tab(tabChat).show();
+                    }
+
+                    // Llamamos a tu función de vista previa
+                    seleccionarArchivoChat(inputArchivo);
+                }
+            }
+        });
+    </script>
+}
+

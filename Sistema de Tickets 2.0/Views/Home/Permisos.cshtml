@@ -1,0 +1,242 @@
+﻿@model List<E_Permiso>
+@using Capa_Entidad.Tickets
+@{
+    ViewData["Title"] = "Permisos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<div class="container-fluid px-4">
+
+    <h2 class="mt-4">Gestión de Permisos</h2>
+
+    <button class="btn btn-primary mb-3"
+            onclick="abrirModal()">
+        <i class="fas fa-plus">  Nuevo Permiso </i>
+    </button>
+
+    <div class="card shadow">
+
+        <div class="card-body">
+
+            <table class="table table-bordered table-striped"
+                   id="tablaPermisos">
+
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Descripción</th>
+                        <th>Código</th>
+                        <th width="120">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.IdPermiso</td>
+                            <td>@item.Descripcion</td>
+                            <td>@item.Codigo</td>
+
+                            <td class="text-center">
+
+                                <button class="btn btn-warning btn-sm"
+                                        onclick="editar(
+                                        '@item.IdPermiso',
+                                        '@item.Descripcion',
+                                        '@item.Codigo')">
+
+                                    <i class="fas fa-edit">  Editar</i>
+                                    @*Editar*@
+                                </button>
+
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="modalPermiso"
+     tabindex="-1">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header bg-primary text-white">
+
+                <h5 class="modal-title" id="tituloModal">
+                    Nuevo Permiso
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <input type="hidden" id="IdPermiso" />
+
+                <div class="mb-3">
+
+                    <label>Descripción</label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="Descripcion" />
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label>Código</label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="Codigo" />
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button class="btn btn-primary"
+                        onclick="guardar()">
+                    Guardar
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+
+        var modal;
+
+        $(document).ready(function () {
+
+            modal = new bootstrap.Modal(
+                document.getElementById('modalPermiso')
+            );
+
+        });
+
+
+        // ABRIR NUEVO
+        function abrirModal() {
+
+            limpiar();
+
+            $("#tituloModal").text("Nuevo Permiso");
+
+            modal.show();
+        }
+
+
+        // EDITAR
+        function editar(id, desc, cod) {
+
+            limpiar();
+
+            $("#IdPermiso").val(id);
+            $("#Descripcion").val(desc);
+            $("#Codigo").val(cod);
+
+            $("#tituloModal").text("Editar Permiso");
+
+            modal.show();
+        }
+
+
+        // GUARDAR
+        function guardar() {
+
+            let data = {
+
+                IdPermiso: $("#IdPermiso").val(),
+                Descripcion: $("#Descripcion").val(),
+                Codigo: $("#Codigo").val(),
+
+                accion: $("#IdPermiso").val() == ""
+                    ? "INSERT"
+                    : "UPDATE"
+            };
+
+
+            $.ajax({
+
+                url: '@Url.Action("GuardarPermiso", "Home")',
+                type: 'POST',
+                data: data,
+
+                success: function (r) {
+
+                    if (r.success) {
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: r.mensaje,
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+
+                        modal.hide();
+
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1200);
+
+                    }
+                    else {
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: r.mensaje
+                        });
+
+                    }
+
+                }
+
+            });
+
+        }
+
+
+        // LIMPIAR
+        function limpiar() {
+
+            $("#IdPermiso").val("");
+            $("#Descripcion").val("");
+            $("#Codigo").val("");
+
+        }
+
+    </script>
+}
+
+
