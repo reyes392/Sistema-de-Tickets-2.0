@@ -1,0 +1,188 @@
+﻿@model List<Capa_Entidad.Tickets.E_Usuarios>
+@{
+    ViewData["Title"] = "Monitoreo";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .led-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        background-color: #bbb; /* Gris por defecto */
+        margin-right: 5px;
+        box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 12px;
+    }
+
+    .led-online {
+        background-color: #2ECC71 !important;
+        box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #304719 0 -1px 9px, #2ECC71 0 2px 12px !important;
+    }
+
+    .led-offline {
+        background-color: #E74C3C !important;
+        box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, #E74C3C 0 2px 12px !important;
+    }
+
+    .card-branch {
+        transition: transform .2s;
+    }
+
+        .card-branch:hover {
+            transform: scale(1.02);
+        }
+</style>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-satellite-dish text-primary"></i> Panel de Monitoreo en Tiempo Real</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-outline-primary" onclick="actualizarTodo()">
+                <i class="fas fa-sync-alt"></i> Actualizar Todo
+            </button>
+        </div>
+    </div>
+    <div id="seccion-alertas" class="row mb-4" style="display: none;">
+        <div class="col-12">
+            <div class="card border-danger shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> Sucursales con Problemas de Conexión</h5>
+                </div>
+                <div class="card-body">
+                    <div id="lista-caidos" class="d-flex flex-wrap gap-2">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row" id="contenedor-sucursales">
+        @foreach (var s in Model)
+        {
+            <div class="col-xl-3 col-md-4 col-sm-6 mb-4">
+                <div class="card h-100 shadow-sm card-branch border-start border-4 border-info">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold text-truncate">@s.UserName</h5>
+                        <p class="text-muted small mb-3">@s.Nombres @s.Apellidos</p>
+
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                <span><i class="fas fa-network-wired me-2"></i>Router</span>
+                                <div class="d-flex align-items-center">
+                                    <span id="led-router-@s.IdUsuario" class="led-indicator" title="@s.IpRouter"></span>
+                                    <small class="status-text" data-ip="@s.IpRouter" data-target="led-router-@s.IdUsuario">Verificando...</small>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                <span><i class="fas fa-video me-2"></i>DVR</span>
+                                <div class="d-flex align-items-center">
+                                    <span id="led-dvr-@s.IdUsuario" class="led-indicator" title="@s.IpDvr"></span>
+                                    <small class="status-text" data-ip="@s.IpDvr" data-target="led-dvr-@s.IdUsuario">Verificando...</small>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                <span><i class="fas fa-server me-2"></i>Server</span>
+                                <div class="d-flex align-items-center">
+                                    <span id="led-server-@s.IdUsuario" class="led-indicator" title="@s.IpServer"></span>
+                                    <small class="status-text" data-ip="@s.IpServer" data-target="led-server-@s.IdUsuario">Verificando...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            actualizarTodo();
+            // Auto-actualizar cada 5 minutos
+            setInterval(actualizarTodo, 300000);
+        });
+
+ 
+
+        function actualizarTodo() {
+            // 1. Limpiamos alertas previas
+            $("#lista-caidos").empty();
+            $("#seccion-alertas").hide();
+
+            $(".status-text").each(function () {
+                let element = $(this);
+                let ip = element.data("ip");
+                let targetId = element.data("target");
+                let led = $("#" + targetId);
+
+                // Extraemos: 'router', 'dvr' o 'server'
+                let tipoDispositivo = targetId.split('-')[1];
+                let idSucursal = targetId.split('-').pop();
+
+                // CAMBIO AQUÍ: Ahora buscamos el texto del párrafo (Nombres Apellidos/Descripción)
+                // en lugar del .card-title (UserName/Código)
+                let descripcionSucursal = element.closest(".card-body").find("p").text().trim();
+
+                if (!ip || ip === "" || ip === "null") {
+                    element.text("N/A").addClass("text-muted");
+                    return;
+                }
+
+                element.text("Ping...").removeClass("text-danger text-success");
+                led.removeClass("led-online led-offline");
+
+                fetch(`/Home/CheckStatus?ip=${ip}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.online) {
+                            element.text("Online").addClass("text-success");
+                            led.addClass("led-online");
+                        } else {
+                            element.text("Offline").addClass("text-danger");
+                            led.addClass("led-offline");
+
+                            // Enviamos la descripción (nombres/apellidos) a la alerta superior
+                            agregarAlerta(descripcionSucursal, idSucursal, tipoDispositivo);
+                        }
+                    })
+                    .catch(() => {
+                        element.text("Error").addClass("text-danger");
+                        led.addClass("led-offline");
+                        agregarAlerta(descripcionSucursal, idSucursal, tipoDispositivo);
+                    });
+            });
+        }
+
+        function agregarAlerta(nombre, id, tipo) {
+            $("#seccion-alertas").show();
+            let existe = $(`#alerta-${id}`);
+
+            // Mapeo de iconos según el tipo
+            let icono = "fa-question";
+            if (tipo === "router") icono = "fa-network-wired";
+            if (tipo === "dvr") icono = "fa-video";
+            if (tipo === "server") icono = "fa-server";
+
+            if (existe.length === 0) {
+                // Creamos el badge con la descripción de la sucursal
+                let badge = `
+        <span id="alerta-${id}" class="badge bg-danger p-2 fs-6 shadow-sm me-2 mb-2 text-start" style="min-width: 150px;">
+            <i class="fas fa-store me-1"></i> <strong>${nombre}</strong> 
+            <hr class="my-1" style="opacity: 0.3">
+            <small id="detalles-${id}"><i class="fas ${icono}"></i> ${tipo.toUpperCase()}</small>
+        </span>`;
+                $("#lista-caidos").append(badge);
+            } else {
+                // Si ya existe, añadimos el nuevo fallo al mismo badge
+                let detalles = $(`#detalles-${id}`);
+                if (!detalles.text().toLowerCase().includes(tipo.toLowerCase())) {
+                    detalles.append(` | <i class="fas ${icono} ms-1"></i> ${tipo.toUpperCase()}`);
+                }
+            }
+        }
+    </script>
+}
+

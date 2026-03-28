@@ -8,7 +8,7 @@
 
 <h1 class="text-center">Tipos de Incidencias</h1>
 
-<button class="btn btn-primary mb-3 " data-bs-toggle="modal" data-bs-target="#modalRegistro" onclick="abrirModal('INSERT')">
+<button class="btn btn-primary mb-3 float-end" data-bs-toggle="modal" data-bs-target="#modalRegistro" onclick="abrirModal('INSERT')">
     <i class="fas fa-plus">  Nuevo Registro</i>
 </button>
 
@@ -162,7 +162,33 @@
             }
         })
         .catch(err => console.error(err));
-    });
+        });
+
+        $(document).ready(function () {
+
+            $('#tblTiposIncidencias').DataTable({
+
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+
+                language: {
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    zeroRecords: "No se encontraron datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "No hay registros",
+                    infoFiltered: "(filtrado de _MAX_ registros)",
+                    search: "Buscar:",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                }
+
+            });
+
+        });
     </script>
 }
 

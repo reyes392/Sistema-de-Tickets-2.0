@@ -6,6 +6,9 @@ using Sistema_de_Tickets_2._0.Filter;
 using Capa_Datos;
 using Capa_Entidad.Tickets;
 using Capa_Negocios.Tickets;
+using Capa_Datos.Tickets;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace Sistema_de_Tickets_2._0.Controllers
 {
@@ -26,10 +29,11 @@ namespace Sistema_de_Tickets_2._0.Controllers
         private readonly CN_Tickets _negocioTickets;
         private readonly CN_Archivos _negocioArchivos;
         private readonly CN_Comentarios _negocioComentarios;
+        private readonly CN_Notificacion _notificacion;
 
         // UN SOLO CONSTRUCTOR PARA TODO
         public HomeController(ILogger<HomeController> logger,CN_Usuarios usuarioNegocio,CN_Permisos negocio,CN_Roles negocioRoles,CN_Estados negocioEstados, CN_Categorias negocioCategorias,CN_Equipos negocioEquipos,
-            CN_Tipos_Incidencias_Tickets negocioTiposIncidenciasTickets, CN_Niveles_Urgencia_Tickets negocioNivelesUrgenciaTickets,CN_Cajas negocioCajas,CN_Tickets negocioTickets, CN_Archivos negocioArchivos, CN_Comentarios negocioComentarios
+            CN_Tipos_Incidencias_Tickets negocioTiposIncidenciasTickets, CN_Niveles_Urgencia_Tickets negocioNivelesUrgenciaTickets,CN_Cajas negocioCajas,CN_Tickets negocioTickets, CN_Archivos negocioArchivos, CN_Comentarios negocioComentarios,CN_Notificacion notificacion
             )
         {
             _logger = logger;
@@ -45,6 +49,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
             _negocioTickets = negocioTickets;
             _negocioArchivos = negocioArchivos;
             _negocioComentarios = negocioComentarios;
+            _notificacion = notificacion;
 
         }
         #endregion
@@ -76,9 +81,50 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [HttpPost]
         public IActionResult GuardarUsuario(E_Usuarios usuario, string Accion)
         {
-            bool resultado = _usuarioNegocio.Guardar(usuario, Accion, out string mensaje);
+            // Obtener el ID desde la Sesión (Ajusta "UsuarioID" al nombre que uses)
+         
+            int idSesion = HttpContext.Session.GetInt32("IdUsuario") ?? 0; ;
+            bool resultado = _usuarioNegocio.Guardar(usuario, Accion, idSesion, out string mensaje);
             // Devolver JSON para AJAX
             return Json(new { success = resultado, mensaje = mensaje });
+        }
+     
+        [Permiso("MONITOREO_VER")]
+        public IActionResult Monitoreo()
+        {
+            // 1. Obtenemos la lista completa
+            var listaCompleta = _usuarioNegocio.Listar();
+
+            // 2. Filtramos: Solo usuarios que empiecen con "FS" (insensible a mayúsculas/minúsculas)
+            // También nos aseguramos de que el campo Usuario no sea nulo antes de comparar
+            var listaFiltrada = listaCompleta
+                .Where(u => u.UserName != null && u.UserName.ToUpper().StartsWith("FS"))
+                .OrderBy(u => u.UserName) // Opcional: los ordena por FS01, FS02...
+                .ToList();
+
+            // 3. Pasamos la lista limpia a la vista
+            return View(listaFiltrada);
+        }
+
+        // Endpoint que será llamado por AJAX para hacer el Ping
+        [HttpGet]
+        public async Task<IActionResult> CheckStatus(string ip)
+        {
+            if (string.IsNullOrEmpty(ip)) return Json(new { online = false });
+
+            using (var ping = new System.Net.NetworkInformation.Ping())
+            {
+                try
+                {
+                    // Timeout de 1 segundo para no ralentizar la interfaz
+                    var reply = await ping.SendPingAsync(ip, 1000);
+                    return Json(new { online = (reply.Status == System.Net.NetworkInformation.IPStatus.Success) });
+                }
+                catch
+                {
+                    return Json(new { online = false });
+                }
+            }
         }
         #endregion
 
@@ -336,62 +382,181 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
             return View(lista);
         }
+        //[Permiso("TICKET_CREAR_EDITAR")]
+        //[HttpPost]
+        //public IActionResult GuardarTickets(E_Tickets tickets, string Accion, List<IFormFile> archivos)
+        //{
+        //    // 1. Recuperamos el ID del usuario desde la Sesión
+        //    int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
+
+        //    if (idUsuarioSesion == null)
+        //    {
+        //        return Json(new { success = false, mensaje = "La sesión ha expirado. Por favor, inicie sesión nuevamente." });
+        //    }
+
+        //    // 2. Si es un INSERT, asignamos el ID del usuario de la sesión como solicitante
+        //    if (Accion == "INSERT")
+        //    {
+        //        tickets.IdUsuarioSolicitud = idUsuarioSesion.Value;
+        //    }
+
+        //    // 3. Guardamos el Ticket (Recuerda que ahora el SP devuelve el ID generado en tickets.IdTicket)
+        //    bool resultado = _negocioTickets.Guardar(tickets, Accion, out string mensaje);
+
+        //    // 4. Lógica de Archivos: Solo si el ticket se guardó bien y vienen archivos
+        //    if (resultado && archivos != null && archivos.Count > 0)
+        //    {
+        //        try
+        //        {
+        //            // Ruta física: wwwroot/uploads/tickets/
+        //            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "tickets");
+
+        //            foreach (var file in archivos)
+        //            {
+        //                // Guardar el archivo físico usando tu Capa de Negocio de archivos
+        //                string nombreSistema = _negocioArchivos.GuardarFisico(file, folderPath);
+
+        //                // Registrar la referencia en la base de datos
+        //                var entidadArchivo = new E_Archivos
+        //                {
+        //                    IdReferencia = tickets.IdTicket, // El ID que devolvió el SP
+        //                    NombreOriginal = file.FileName,
+        //                    NombreSistema = nombreSistema,
+        //                    Extension = Path.GetExtension(file.FileName),
+        //                    Ruta = "/uploads/tickets/" + nombreSistema
+        //                };
+
+        //                _negocioArchivos.RegistrarEnBaseDatos(entidadArchivo);
+        //            }
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            // Opcional: Podrías acumular un mensaje de error si los archivos fallan pero el ticket no
+        //            mensaje += " (Aviso: El ticket se guardó pero hubo problemas con los archivos: " + ex.Message + ")";
+        //        }
+        //    }
+
+        //    return Json(new { success = resultado, mensaje = mensaje });
+        //}
         [Permiso("TICKET_CREAR_EDITAR")]
         [HttpPost]
         public IActionResult GuardarTickets(E_Tickets tickets, string Accion, List<IFormFile> archivos)
         {
-            // 1. Recuperamos el ID del usuario desde la Sesión
             int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
-
             if (idUsuarioSesion == null)
             {
-                return Json(new { success = false, mensaje = "La sesión ha expirado. Por favor, inicie sesión nuevamente." });
+                return Json(new { success = false, mensaje = "La sesión ha expirado." });
             }
 
-            // 2. Si es un INSERT, asignamos el ID del usuario de la sesión como solicitante
-            if (Accion == "INSERT")
-            {
-                tickets.IdUsuarioSolicitud = idUsuarioSesion.Value;
-            }
+            if (Accion == "INSERT") tickets.IdUsuarioSolicitud = idUsuarioSesion.Value;
 
-            // 3. Guardamos el Ticket (Recuerda que ahora el SP devuelve el ID generado en tickets.IdTicket)
             bool resultado = _negocioTickets.Guardar(tickets, Accion, out string mensaje);
 
-            // 4. Lógica de Archivos: Solo si el ticket se guardó bien y vienen archivos
-            if (resultado && archivos != null && archivos.Count > 0)
+            if (resultado)
             {
-                try
+                // 1. Lógica de Archivos (Mantenla igual, es síncrona)
+                if (archivos != null && archivos.Count > 0)
                 {
-                    // Ruta física: wwwroot/uploads/tickets/
-                    string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "tickets");
-
-                    foreach (var file in archivos)
+                    try
                     {
-                        // Guardar el archivo físico usando tu Capa de Negocio de archivos
-                        string nombreSistema = _negocioArchivos.GuardarFisico(file, folderPath);
+                        string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "tickets");
+                        if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
-                        // Registrar la referencia en la base de datos
-                        var entidadArchivo = new E_Archivos
+                        foreach (var file in archivos)
                         {
-                            IdReferencia = tickets.IdTicket, // El ID que devolvió el SP
-                            NombreOriginal = file.FileName,
-                            NombreSistema = nombreSistema,
-                            Extension = Path.GetExtension(file.FileName),
-                            Ruta = "/uploads/tickets/" + nombreSistema
-                        };
+                            string nombreSistema = _negocioArchivos.GuardarFisico(file, folderPath);
 
-                        _negocioArchivos.RegistrarEnBaseDatos(entidadArchivo);
+                            var entidadArchivo = new E_Archivos
+                            {
+                                IdReferencia = tickets.IdTicket,
+                                NombreOriginal = file.FileName,
+                                NombreSistema = nombreSistema,
+                                Extension = Path.GetExtension(file.FileName),
+                                Ruta = "/uploads/tickets/" + nombreSistema
+                            };
+
+                            _negocioArchivos.RegistrarEnBaseDatos(entidadArchivo);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        mensaje += " (Aviso: El ticket se guardó pero hubo problemas con los archivos: " + ex.Message + ")";
                     }
                 }
-                catch (Exception ex)
+
+                // 2. Lógica de Correo
+                if (Accion == "UPDATE" && tickets.IdEstado == 4)
                 {
-                    // Opcional: Podrías acumular un mensaje de error si los archivos fallan pero el ticket no
-                    mensaje += " (Aviso: El ticket se guardó pero hubo problemas con los archivos: " + ex.Message + ")";
+                    // --- CRITICAL: Extraer datos del Request antes del Task.Run ---
+                    string esquema = Request.Scheme;
+                    string host = Request.Host.Value;
+                    string urlBase = $"{esquema}://{host}";
+                    int idTicketGenerado = tickets.IdTicket;
+
+                    Task.Run(() => {
+                        try
+                        {
+                            // No uses 'tickets' directamente aquí si es posible, usa el ID
+                            var infoTicket = _negocioTickets.Listar().FirstOrDefault(t => t.IdTicket == idTicketGenerado);
+
+                            if (infoTicket != null)
+                            {
+                                string correoDestino = _usuarioNegocio.ObtenerCorreoPorId(infoTicket.IdUsuarioSolicitud);
+
+                                if (!string.IsNullOrEmpty(correoDestino))
+                                {
+                                    string asunto = $"Ticket Cerrado: #{infoTicket.IdTicket} - {infoTicket.Incidencia}";
+
+                                    string cuerpo = $@"
+                                        <div style='font-family: sans-serif; border: 1px solid #ddd; border-radius: 10px; padding: 20px; max-width: 600px;'>
+                                            <h2 style='color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;'>Resolución de Ticket</h2>
+                                            <p>Hola <strong>{infoTicket.UsusarioSolicitador}</strong>, tu ticket ha sido cerrado:</p>
+                                
+                                            <table style='width: 100%; border-collapse: collapse; margin: 15px 0;'>
+                                                <tr style='background: #f8f9fa;'>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Atendido por:</strong></td>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoTicket.UsuarioAsignado}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Fecha de registro:</strong></td>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoTicket.Registro}</td>
+                                                </tr>
+                                                <tr style='background: #f8f9fa;'>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Fecha Cierre:</strong></td>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'>{DateTime.Now:dd/MM/yyyy hh:mm tt}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Descripción:</strong></td>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoTicket.Problema}</td>
+                                                </tr>
+                                                <tr style='background: #f8f9fa;'>
+                                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Resolución:</strong></td>
+                                                    <td style='padding: 8px; border: 1px solid #eee; font-weight: bold; color: #27ae60;'>{infoTicket.Resolucion}</td>
+                                                </tr>
+                                            </table>
+
+                              
+                                            <p style='margin-top: 20px; font-size: 0.8em; color: #7f8c8d; text-align: center;'>
+                                                 - Departamento de Sistemas - Soporte Técnico - Farmacias Saba Nicaragua
+                                            </p>
+                                        </div>";
+
+                                    CN_Recursos.EnviarCorreoInterno(correoDestino, asunto, cuerpo);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Al estar en un hilo aparte, si falla aquí no rompe la app, 
+                            // pero podrías loguear 'ex' en un archivo de texto.
+                        }
+                    });
                 }
             }
 
             return Json(new { success = resultado, mensaje = mensaje });
         }
+
 
         [HttpGet]
         public JsonResult ObtenerAdjuntos(int idTicket)
@@ -474,7 +639,8 @@ namespace Sistema_de_Tickets_2._0.Controllers
                 rutaArchivo = c.RutaArchivo,
                 extension = c.Extension,
                 fecha = c.FechaRegistro.ToString("dd/MM HH:mm"),
-                esMio = c.IdUsuario == idUsuarioSesion
+                esMio = c.IdUsuario == idUsuarioSesion,
+                fotoPerfil = c.FotoPerfil
             }).ToList();
 
             return Json(resultado);
@@ -492,6 +658,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
             return $"{conteo}-{sumaEstados}";
         }
+
         [HttpGet]
         public JsonResult ObtenerUltimoComentarioId(int idTicket)
         {
@@ -504,20 +671,107 @@ namespace Sistema_de_Tickets_2._0.Controllers
             return Json(new { ultimoId = ultimoId });
         }
 
-        [HttpGet]
-        public JsonResult ObtenerEstadoChat(int idTicket)
+    
+        [HttpPost]
+        public JsonResult ObtenerEstadosChats([FromBody] List<int> idsTickets)
         {
-            var estado = _negocioTickets.ObtenerEstadoChat(idTicket);
+            if (idsTickets == null || !idsTickets.Any())
+                return Json(new List<ChatEstadoDTO>());
 
-            // En .NET Core, no hace falta JsonRequestBehavior.AllowGet
-            return Json(new
-            {
-                ultimoId = estado.UltimoId,
-                idAutor = estado.IdAutor
-            });
+            var resultado = _negocioTickets.ObtenerEstadosChats(idsTickets);
+            return Json(resultado);
         }
         #endregion
 
+        #region SONIDOS DE NOTIFICACION
+        //[HttpGet]
+        //public JsonResult VerificarNotificaciones()
+        //{
+        //    // Obtenemos los datos de la sesión actual
+        //    int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+        //    int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+
+        //    if (idLogueado == 0)
+        //    {
+        //        return Json(new { total = 0 });
+        //    }
+
+        //    // Instancia de negocio y llamada al método
+        //    int totalNotificaciones = _notificacion.ObtenerConteoActividad(idLogueado, idRolLogueado);
+
+        //    return Json(new { total = totalNotificaciones });
+        //}
+        [HttpGet]
+        public JsonResult VerificarNotificaciones()
+        {
+            int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+
+            if (idLogueado == 0) return Json(new { total = 0 });
+
+            // LLama al nuevo SP centralizado
+            int totalGlobal = _notificacion.ObtenerConteoActividadGlobal(idLogueado, idRolLogueado);
+
+            return Json(new { total = totalGlobal });
+        }
+        #endregion
+
+        #region UTILIDADES
+
+        [Permiso("TICKET_VER")]
+        [HttpGet]
+        public JsonResult ObtenerEstadoGlobalTickets()
+        {
+            int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+
+            // 1. Obtenemos la lista base de tickets
+            var listaTickets = _negocioTickets.Listar();
+
+            // 2. Aplicamos el filtro de seguridad/roles
+            if (idRolLogueado != 1 && idRolLogueado != 3)
+            {
+                listaTickets = listaTickets.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
+            }
+
+            // 3. Extraemos solo los IDs de los tickets filtrados
+            var ids = listaTickets.Select(t => t.IdTicket).ToList();
+
+            // 4. UNA SOLA LLAMADA a la base de datos para traer todos los estados
+            var estados = _negocioTickets.ObtenerEstadosChats(ids);
+
+            // 5. Cruzamos la información en memoria (mucho más rápido que ir a DB)
+            var resultado = listaTickets.Select(t => {
+                // Buscamos el estado en la lista que ya trajimos
+                var estado = estados.FirstOrDefault(e => e.IdTicket == t.IdTicket);
+
+                return new
+                {
+                    id = t.IdTicket,
+                    ultimoIdMsg = estado?.UltimoId ?? 0,
+                    idAutorUltimo = estado?.IdAutor ?? 0
+                };
+            }).ToList();
+
+            return Json(resultado);
+        }
+        [Permiso("TICKETS_REPORTE")]
+        public IActionResult ReporteTickets()
+        {
+            // 1. Instanciar tu capa de negocio o llamar al método que trae la lista
+            // Ajusta "CN_Reclamos" y "Listar" según los nombres reales de tus clases
+            var lista = _negocioTickets.Listar();
+
+            // 2. Si la lista es null, enviamos una lista vacía para evitar el error
+            if (lista == null)
+            {
+                lista = new List<Capa_Entidad.Tickets.E_Tickets>();
+            }
+
+            // 3. Pasar la lista a la vista
+            return View(lista);
+        }
+        #endregion
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         ///REDIRECCIONAR A LOS USUARIOS SIN PERMISOS AL SISTEMA
         /////////////////////////////////////////////////////////////////////////////////////////////////////

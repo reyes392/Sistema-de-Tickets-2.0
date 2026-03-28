@@ -8,7 +8,7 @@
 
 <h1 class="text-center">Usuarios</h1>
 
-<button class="btn btn-primary mb-3 " data-bs-toggle="modal" data-bs-target="#modalUsuario" onclick="abrirModal('INSERT')">
+<button class="btn btn-primary mb-3 float-end" data-bs-toggle="modal" data-bs-target="#modalUsuario" onclick="abrirModal('INSERT')">
     <i class="fas fa-plus">  Nuevo Usuario</i>
 </button>
 
@@ -53,6 +53,9 @@
                                 data-rol="@u.Rol"
                                 data-estado="@u.Estado"
                                 data-categoria="@u.Categoria"
+                                data-iprouter="@u.IpRouter"
+                                data-ipdvr="@u.IpDvr"
+                                data-ipserver="@u.IpServer"
                                 onclick="abrirModal('UPDATE', this)">
                             @*Editar*@
                             <i class="fas fa-edit">  Editar</i>
@@ -124,6 +127,20 @@
                             }
                         </select>
                     </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label>IP Router</label>
+                            <input type="text" class="form-control" id="IpRouter" name="IpRouter" placeholder="10.x.x.x" />
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>IP DVR</label>
+                            <input type="text" class="form-control" id="IpDvr" name="IpDvr" placeholder="10.x.x.x" />
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label>IP Server</label>
+                            <input type="text" class="form-control" id="IpServer" name="IpServer" placeholder="10.x.x.x" />
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-success">Guardar</button>
@@ -149,6 +166,9 @@
             document.getElementById("Apellidos").value = boton.dataset.apellidos;
             document.getElementById("UserName").value = boton.dataset.username;
             document.getElementById("Correo").value = boton.dataset.correo;
+            document.getElementById("IpRouter").value = boton.dataset.iprouter;
+            document.getElementById("IpDvr").value = boton.dataset.ipdvr;
+            document.getElementById("IpServer").value = boton.dataset.ipserver;
 
             setDropdownValue("IdRol", boton.dataset.rol);
             setDropdownValue("IdEstado", boton.dataset.estado);
@@ -200,5 +220,31 @@
         })
         .catch(err => console.error(err));
     });
+
+        $(document).ready(function () {
+
+            $('#tblUsuarios').DataTable({
+
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+
+                language: {
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    zeroRecords: "No se encontraron datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "No hay registros",
+                    infoFiltered: "(filtrado de _MAX_ registros)",
+                    search: "Buscar:",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                }
+
+            });
+
+        });
     </script>
 }

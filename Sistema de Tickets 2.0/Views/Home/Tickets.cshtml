@@ -5,6 +5,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
+
 <style>
     /* Estilos para el Chat */
     #chatBox {
@@ -278,9 +279,11 @@
     </div>
 </div>
 
+
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        let ultimaCantidadComentarios = 0;
         // --- 1. VARIABLES GLOBALES Y ESTADO ---
         let ticketSeleccionado = null;      // Guarda el objeto del ticket que se está viendo
         let chatTimer = null;               // Timer para refrescar el chat cada 3 segundos
@@ -294,72 +297,135 @@
         const nombreTecnicoLogueado = '@ViewBag.NombreUsuarioLogueado';
         const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
 
-        @*$(document).ready(function () {
-            // --- 2. INICIALIZACIÓN ---
 
-            // Registramos el estado inicial de los chats para que no salgan notificaciones viejas
+ 
+
+
+        $(document).ready(function () {
+            // 1. Inicializar DataTable
+            $('#tblTickets').DataTable({
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                order: [],
+                language: {
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    zeroRecords: "No se encontraron datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "No hay registros",
+                    infoFiltered: "(filtrado de _MAX_ registros)",
+                    search: "Buscar:",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                }
+            });
+            // Detectar cuando el usuario cambia a la pestaña de Chat
+            $('button[data-bs-target="#chat"]').on('shown.bs.tab', function (e) {
+                marcarComoLeido();
+            });
+            // 2. Ejecutar revisiones iniciales
+            actualizarVersionBaseDatos();
+            sincronizarEstadosChatMasivo(); // Reemplaza al antiguo .each()
+
+            // 3. Configurar Monitores (Timers)
+            setInterval(verificarCambiosTickets, 10000);
+            setInterval(sincronizarEstadosChatMasivo, 6000); // El monitor ahora es masivo
+        });
+
+        // --- FUNCIONES REFACTORIZADAS ---
+
+        function actualizarVersionBaseDatos() {
+            $.get('@Url.Action("ObtenerVersionTickets", "Home")', function (v) {
+                versionTicketsActual = v;
+            });
+        }
+
+        function sincronizarEstadosChatMasivo() {
+            let idsTickets = [];
+
+            // Recolectamos todos los IDs presentes en la tabla
             $(".btn-ver").each(function () {
                 let info = $(this).data("info");
                 let id = info.IdTicket || info.idTicket;
-                $.get('@Url.Action("ObtenerUltimoComentarioId", "Home")', { idTicket: id }, function (res) {
-                    ultimoIdComentarioVisto[id] = res.ultimoId;
-                });
+                if (id) idsTickets.push(id);
             });
 
-            // Obtenemos la "versión" actual de la base de datos al cargar
-            $.get('@Url.Action("ObtenerVersionTickets", "Home")', function (v) {
-                versionTicketsActual = v;
+            if (idsTickets.length === 0) return;
+
+            // Petición única al servidor enviando el array de IDs
+            $.ajax({
+                url: '@Url.Action("ObtenerEstadosChats", "Home")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(idsTickets),
+                success: function (estados) {
+                    // Primero ocultamos todos los badges de los tickets procesados para resetear
+                    // (Opcional, según prefieras el comportamiento visual)
+
+                    //estados.forEach(res => {
+                    //    const id = res.idTicket;
+                    //    const clave = `visto_ticket_u${idUsuarioLogueado}_t${id}`; // Misma clave unificada
+                    //    const guardado = localStorage.getItem(clave);
+                    //    const ultimoVisto = guardado ? parseInt(guardado) : 0;
+
+                    //    const ticketAbiertoId = ticketSeleccionado?.IdTicket || ticketSeleccionado?.idTicket;
+                    //    const estaViendoChat = (id === ticketAbiertoId && $("#chatTab").hasClass("active"));
+
+                    //    if (estaViendoChat) {
+                    //        // Si lo está viendo, el "visto" es igual al "ultimoId" del servidor
+                    //        localStorage.setItem(clave, res.ultimoId);
+                    //        $(`#notif-${id}`).addClass("d-none");
+                    //    }
+                    //    else if (res.ultimoId > ultimoVisto && res.idAutor !== idUsuarioLogueado) {
+                    //        $(`#notif-${id}`).removeClass("d-none");
+                    //    } else {
+                    //        $(`#notif-${id}`).addClass("d-none");
+                    //    }
+
+                    //    ultimoIdComentarioVisto[id] = Math.max(res.ultimoId, ultimoVisto);
+                    //});
+                    estados.forEach(res => {
+                        const id = res.idTicket;
+                        const clave = `visto_ticket_u${idUsuarioLogueado}_t${id}`;
+                        const guardado = localStorage.getItem(clave);
+                        const ultimoVisto = guardado ? parseInt(guardado) : 0;
+
+                        const ticketAbiertoId = ticketSeleccionado?.IdTicket || ticketSeleccionado?.idTicket;
+                        const estaViendoChat = (id === ticketAbiertoId && $("#chatTab").hasClass("active"));
+
+                        // --- NUEVA LÓGICA DE FILTRADO POR ESTADO ---
+                        // Buscamos el estado actual en el botón de la fila
+                        const $btn = $(`.btn-ver[data-info*='"idTicket":${id}']`).first()
+                            || $(`.btn-ver[data-info*='"IdTicket":${id}']`).first();
+                        const infoFila = $btn.data("info");
+                        // Obtenemos el texto del estado y lo normalizamos (sin espacios y en minúsculas)
+                        const estadoTexto = (infoFila ? (infoFila.Estado || infoFila.estado || "") : "").toString().trim().toLowerCase();
+
+                        // Validamos contra las posibilidades
+                        const esEstadoLeido = (estadoTexto === "cerrado" );
+
+                        if (estaViendoChat || esEstadoLeido) {
+                            localStorage.setItem(clave, res.ultimoId);
+                            $(`#notif-${id}`).addClass("d-none");
+                        }
+                        else if (res.ultimoId > ultimoVisto && res.idAutor !== idUsuarioLogueado) {
+                            $(`#notif-${id}`).removeClass("d-none");
+                        } else {
+                            $(`#notif-${id}`).addClass("d-none");
+                        }
+
+                        ultimoIdComentarioVisto[id] = Math.max(res.ultimoId, ultimoVisto);
+                    });
+                },
+                error: function(err) {
+                    console.error("Error al sincronizar estados de chat:", err);
+                }
             });
+        }
 
-            // --- 3. TIMERS (MONITORES) ---
-
-            // Monitor de cambios en la tabla (Nuevos tickets o cambios de estado)
-            setInterval(verificarCambiosTickets, 10000);
-
-            // Monitor de mensajes nuevos en el chat (Badges rojos)
-            setInterval(monitorearMensajesNuevos, 6000);
-        });*@
-        $(document).ready(function () {
-            // --- 2. INICIALIZACIÓN ---
-
-            // Consultamos el estado real de cada chat al cargar la página
-            $(".btn-ver").each(function () {
-                let $btn = $(this);
-                let info = $btn.data("info");
-                let id = info.IdTicket || info.idTicket;
-
-                // Usamos el nuevo método que devuelve ultimoId e idAutor
-                $.get('@Url.Action("ObtenerEstadoChat", "Home")', { idTicket: id }, function (res) {
-
-                    // 1. Sincronizamos nuestro registro local para que el monitor sepa el punto de partida
-                    ultimoIdComentarioVisto[id] = res.ultimoId;
-
-                    // 2. LÓGICA DE CARGA INMEDIATA:
-                    // Si hay mensajes Y el último no lo escribí yo (el usuario logueado)
-                    if (res.ultimoId > 0 && res.idAutor !== idUsuarioLogueado) {
-                        // Mostramos el badge rojo de inmediato
-                        $(`#notif-${id}`).removeClass("d-none");
-                    } else {
-                        // Por seguridad, aseguramos que esté oculto si el último mensaje es mío
-                        $(`#notif-${id}`).addClass("d-none");
-                    }
-                });
-            });
-
-            // Obtenemos la "versión" actual de la base de datos al cargar
-            $.get('@Url.Action("ObtenerVersionTickets", "Home")', function (v) {
-                versionTicketsActual = v;
-            });
-
-            // --- 3. TIMERS (MONITORES) ---
-
-            // Monitor de cambios en la tabla (Nuevos tickets o cambios de estado)
-            setInterval(verificarCambiosTickets, 10000);
-
-            // Monitor de mensajes nuevos en el chat (Badges rojos)
-            // Este seguirá funcionando cada 6 seg para mensajes que lleguen mientras estás conectado
-            setInterval(monitorearMensajesNuevos, 6000);
-        });
 
 
         // --- 4. FUNCIÓN: DETECTAR CAMBIOS EN EL SERVIDOR (Para todos los usuarios) ---
@@ -443,12 +509,94 @@
             }
         });
 
-       function verDetalle(ticket) {
+       //function verDetalle(ticket) {
+       //     if (!ticket) return;
+       //     if (chatTimer) clearInterval(chatTimer);
+
+       //     // --- LIMPIEZA FORZADA DE CAMPOS ---
+       //     // Esto asegura que no veas lo del ticket anterior mientras carga el nuevo
+       //     $("#txtResolucion").val("");
+       //     $("#txtDetalleProblema").val("");
+       //     $("#chatBox").html("");
+
+       //     ticketSeleccionado = ticket;
+
+       //     $("#seccionDetalle").show();
+       //     $("#detalleVacio").hide();
+
+       //     // Reset a la primera pestaña (Información)
+       //     const firstTab = new bootstrap.Tab(document.querySelector('#ticketTabs button[data-bs-target="#info"]'));
+       //     firstTab.show();
+
+       //     const id = ticket.idTicket || ticket.IdTicket;
+       //     const estado = ticket.estado || ticket.Estado;
+       //     const idAsignado = ticket.idUsuarioAsignado || ticket.IdUsuarioAsignado;
+       //     const esStaff = (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3);
+
+       //     const formatearFecha = (f) => {
+       //         if (!f) return "N/A";
+       //         let d = new Date(f);
+       //         return isNaN(d) ? f : d.toLocaleString();
+       //     };
+
+       //     // Llenado de etiquetas (Usamos .text para labels y .val para textareas)
+       //     $("#lblIdTicket").text(id);
+       //     $("#txtSolicitante").text(ticket.ususarioSolicitador || ticket.UsusarioSolicitador || "N/A");
+       //     $("#txtCategoria").text(ticket.categoria || ticket.Categoria || "N/A");
+       //     $("#txtIncidencia").text(ticket.incidencia || ticket.Incidencia || "N/A");
+       //     $("#txtUrgencia").text(ticket.nivelUrgencia || ticket.NivelUrgencia || "N/A");
+       //     $("#txtCaja").text(ticket.caja || ticket.Caja || "N/A");
+       //     $("#txtAsignado").text(ticket.usuarioAsignado || ticket.UsuarioAsignado || "N/A");
+       //     $("#lblRegistro").text(formatearFecha(ticket.registro || ticket.Registro));
+       //     $("#lblModif").text(formatearFecha(ticket.modificacion || ticket.Modificacion));
+
+       //     // IMPORTANTE: Usar .val() para que el textarea se refresque correctamente
+       //     $("#txtDetalleProblema").val(ticket.problema || ticket.Problema || "N/A");
+       //     $("#txtResolucion").val(ticket.resolucion || ticket.Resolucion || "");
+
+       //     // Badge de estado
+       //     let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
+       //     $("#badgeEstado").text(estado).removeClass("bg-warning bg-info bg-success text-dark").addClass(colorClass);
+
+
+
+       //    //// --- LÓGICA PARA DESHABILITAR CHAT SI EL TICKET ESTÁ CERRADO ---
+       //    if (estado === "Cerrado") {
+       //        /*  $("#txtMensajeChat").prop("disabled", true).val("").attr("placeholder", "Caso cerrado - No se admiten más mensajes");*/
+       //        bloquearChatVisualmente();
+       //        $(".btn-primary[onclick='enviarComentario()']").prop("disabled", true);
+       //        $("#fArchivoChat").prop("disabled", true); // También deshabilitamos el input de archivos
+       //        $(".fa-paper-plane").closest("button").addClass("btn-secondary").removeClass("bg-primary"); // Cambio visual opcional
+       //    } else {
+       //        $("#txtMensajeChat").prop("disabled", false).attr("placeholder", "Escribe un comentario...");
+       //        $(".btn-primary[onclick='enviarComentario()']").prop("disabled", false);
+       //        $("#fArchivoChat").prop("disabled", false);
+       //        $(".fa-paper-plane").closest("button").addClass("btn-primary").removeClass("btn-secondary");
+       //    }
+
+
+       //     // Lógica de Seguridad para edición
+       //     let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 1 || idAsignado === idUsuarioLogueado));
+       //     if (puedeEditar) {
+       //         $("#btnGuardarTicket").show();
+       //         $("#txtResolucion, #txtDetalleProblema").prop("readonly", false).removeClass("bg-light");
+       //     } else {
+       //         $("#btnGuardarTicket").hide();
+       //         $("#txtResolucion, #txtDetalleProblema").prop("readonly", true).addClass("bg-light");
+       //     }
+
+       //    // Carga de chat y adjuntos
+       //    ultimaCantidadComentarios = 0;
+       //     actualizarChatSilencioso();
+       //     marcarComoLeido();
+       //     cargarAdjuntos(id);
+        // }
+
+        function verDetalle(ticket) {
             if (!ticket) return;
             if (chatTimer) clearInterval(chatTimer);
 
             // --- LIMPIEZA FORZADA DE CAMPOS ---
-            // Esto asegura que no veas lo del ticket anterior mientras carga el nuevo
             $("#txtResolucion").val("");
             $("#txtDetalleProblema").val("");
             $("#chatBox").html("");
@@ -463,17 +611,17 @@
             firstTab.show();
 
             const id = ticket.idTicket || ticket.IdTicket;
-            const estado = ticket.estado || ticket.Estado;
+            const estado = (ticket.estado || ticket.Estado || "").toString().trim();
             const idAsignado = ticket.idUsuarioAsignado || ticket.IdUsuarioAsignado;
             const esStaff = (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3);
 
             const formatearFecha = (f) => {
                 if (!f) return "N/A";
                 let d = new Date(f);
-                return isNaN(d) ? f : d.toLocaleString();
+                return d.toLocaleString();
             };
 
-            // Llenado de etiquetas (Usamos .text para labels y .val para textareas)
+            // Llenado de etiquetas
             $("#lblIdTicket").text(id);
             $("#txtSolicitante").text(ticket.ususarioSolicitador || ticket.UsusarioSolicitador || "N/A");
             $("#txtCategoria").text(ticket.categoria || ticket.Categoria || "N/A");
@@ -484,7 +632,6 @@
             $("#lblRegistro").text(formatearFecha(ticket.registro || ticket.Registro));
             $("#lblModif").text(formatearFecha(ticket.modificacion || ticket.Modificacion));
 
-            // IMPORTANTE: Usar .val() para que el textarea se refresque correctamente
             $("#txtDetalleProblema").val(ticket.problema || ticket.Problema || "N/A");
             $("#txtResolucion").val(ticket.resolucion || ticket.Resolucion || "");
 
@@ -492,7 +639,27 @@
             let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
             $("#badgeEstado").text(estado).removeClass("bg-warning bg-info bg-success text-dark").addClass(colorClass);
 
-            // Lógica de Seguridad para edición
+            // --- LÓGICA DE BLOQUEO DE CHAT ---
+
+            // 1. Bloqueo por Estado Cerrado
+            if (estado === "Cerrado") {
+                bloquearChatVisualmente();
+                $("#txtMensajeChat").attr("placeholder", "Caso cerrado - No se admiten más mensajes");
+            }
+            // 2. Bloqueo por Jerarquía: Si es Staff pero NO es el técnico asignado
+            else if (esStaff && idAsignado !== idUsuarioLogueado) {
+                bloquearChatVisualmente();
+                $("#txtMensajeChat").attr("placeholder", "Solo el técnico asignado puede comentar");
+            }
+            // 3. Habilitado: Para el técnico asignado o para el solicitante (si no es staff)
+            else {
+                $("#txtMensajeChat").prop("disabled", false).attr("placeholder", "Escribe un comentario...");
+                $(".btn-primary[onclick='enviarComentario()']").prop("disabled", false);
+                $("#fArchivoChat").prop("disabled", false);
+                $(".fa-paper-plane").closest("button").addClass("btn-primary").removeClass("btn-secondary");
+            }
+
+            // Lógica de Seguridad para edición (Resolución/Problema)
             let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 1 || idAsignado === idUsuarioLogueado));
             if (puedeEditar) {
                 $("#btnGuardarTicket").show();
@@ -503,20 +670,30 @@
             }
 
             // Carga de chat y adjuntos
+            ultimaCantidadComentarios = 0;
             actualizarChatSilencioso();
             marcarComoLeido();
             cargarAdjuntos(id);
         }
         // --- 7. FUNCIONES DE CHAT ---
+
+   
         function marcarComoLeido() {
             if (!ticketSeleccionado) return;
-            const id = ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket;
-            $(`#notif-${id}`).addClass("d-none");
-            $.get('@Url.Action("ObtenerUltimoComentarioId", "Home")', { idTicket: id }, function (res) {
-                ultimoIdComentarioVisto[id] = res.ultimoId;
+            const idTicket = ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket;
+
+            // 1. Ocultar visualmente de inmediato
+            $(`#notif-${idTicket}`).addClass("d-none");
+
+            // 2. Obtener el último ID y guardar
+            $.get('@Url.Action("ObtenerUltimoComentarioId", "Home")', { idTicket: idTicket }, function (res) {
+                const clave = `visto_ticket_u${idUsuarioLogueado}_t${idTicket}`; // Clave única
+                localStorage.setItem(clave, res.ultimoId);
+
+                // Actualizamos el diccionario en memoria también
+                ultimoIdComentarioVisto[idTicket] = res.ultimoId;
             });
         }
-
         function iniciarRefrescoChat() {
             if (chatTimer) clearInterval(chatTimer);
             chatTimer = setInterval(() => {
@@ -525,21 +702,54 @@
         }
 
 
+
         function actualizarChatSilencioso() {
             if (!ticketSeleccionado) return;
             const idTicket = ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket;
 
             $.get('@Url.Action("ObtenerComentarios", "Home")', { idTicket: idTicket }, function (data) {
+
+                // 1. Manejo de estado vacío (Quitar spinner o mensajes viejos)
+                if (data.length === 0) {
+                    if (ultimaCantidadComentarios !== 0 || $("#chatBox").find(".fa-spinner").length > 0) {
+                        $("#chatBox").html('<div class="text-center text-muted small mt-4">No hay mensajes en este ticket.</div>');
+                        ultimaCantidadComentarios = 0;
+                    }
+                    return;
+                }
+
+                // 2. Si la cantidad de mensajes no ha cambiado, no tocamos el DOM (Evita el parpadeo)
+                if (data.length === ultimaCantidadComentarios) return;
+
                 let html = "";
                 data.forEach(c => {
-                    const claseMio = c.esMio ? "chat-right" : "chat-left";
+                    const esMio = c.esMio;
+                    // Adaptamos las clases según tu CSS de Tickets
+                    const claseMio = esMio ? "chat-right" : "chat-left";
                     const ruta = c.rutaArchivo || c.RutaArchivo;
                     const ext = (c.extension || c.Extension || "").toLowerCase();
+                    const nombreFoto = c.fotoPerfil || c.FotoPerfil;
 
-                    html += `<div class="chat-message ${claseMio}"><span class="chat-user">${c.nombreUsuario}</span><div>${c.mensaje || ""}</div>`;
+                    // Foto de perfil (Usando caché del navegador)
+                    const fotoUrl = (nombreFoto && nombreFoto.trim() !== "")
+                        ? `/uploads/perfiles/${nombreFoto}`
+                        : `/sbadmin2/img/undraw_profile.svg`;
 
+                    // Estructura de mensaje con Foto de Perfil integrada
+                    // Nota: Ajusté el flex para que se vea igual que en Reclamos
+                    html += `
+                        <div class="d-flex ${esMio ? 'flex-row-reverse' : ''} mb-3">
+                            <img src="${fotoUrl}"
+                                 class="rounded-circle border shadow-sm"
+                                 style="width: 35px; height: 35px; object-fit: cover; flex-shrink: 0; ${esMio ? 'margin-left: 10px;' : 'margin-right: 10px;'}"
+                                 onerror="this.src='/sbadmin2/img/undraw_profile.svg'">
+
+                            <div class="chat-message ${claseMio}" style="max-width: 80%;">
+                                <span class="chat-user">${c.nombreUsuario || "Usuario"}</span>
+                                <div>${c.mensaje || ""}</div>`;
+
+                    // Lógica de archivos adjuntos
                     if (ruta) {
-                        // --- SI ES VIDEO: Mostramos un botón/icono para abrirlo ---
                         if (ext.match(/(mp4|webm|ogg)$/i)) {
                             html += `
                                 <div class="mt-2">
@@ -552,31 +762,41 @@
                                     </a>
                                 </div>`;
                         }
-                        // --- SI ES IMAGEN: Mantenemos la miniatura ---
                         else if (ext.match(/(jpg|jpeg|png|gif)$/i)) {
-                            html += `<a href="${ruta}" target="_blank"><img src="${ruta}" class="img-fluid rounded mt-2 border" style="max-height:150px"></a>`;
+                            html += `<a href="${ruta}" target="_blank"><img src="${ruta}" class="img-fluid rounded mt-2 border shadow-sm" style="max-height:150px"></a>`;
                         }
-                        // --- OTROS ARCHIVOS ---
                         else {
                             html += `<div class="mt-2"><a href="${ruta}" target="_blank" class="btn btn-sm btn-light border small"><i class="fas fa-file"></i> Ver Adjunto</a></div>`;
                         }
                     }
-                    html += `<span class="chat-time">${c.fecha}</span></div>`;
+
+                    html += `   <span class="chat-time">${c.fecha || ""}</span>
+                            </div>
+                        </div>`;
                 });
 
-                if ($("#chatBox").html().length !== html.length) {
-                    $("#chatBox").html(html).scrollTop($("#chatBox")[0].scrollHeight);
-                    marcarComoLeido();
+                // Inyectamos el contenido
+                $("#chatBox").html(html);
+
+                // 3. Scroll inteligente: Solo baja si hay mensajes nuevos
+                if (data.length > ultimaCantidadComentarios) {
+                    $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
                 }
+
+                ultimaCantidadComentarios = data.length;
+                marcarComoLeido();
             });
         }
 
         function cargarComentarios() {
             if (!ticketSeleccionado) return;
+
+            // Reseteo crítico al cambiar de ticket
+            ultimaCantidadComentarios = 0;
+
             $("#chatBox").html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
             actualizarChatSilencioso();
         }
-
         function enviarComentario() {
             const msg = $("#txtMensajeChat").val().trim();
             const file = $("#fArchivoChat")[0].files[0];
@@ -600,6 +820,7 @@
                         $("#txtMensajeChat").val("");
                         limpiarArchivoChat();
                         actualizarChatSilencioso();
+                        marcarComoLeido(); // <--- Agrega esto aquí
                     } else {
                         Swal.fire('Error', res.mensaje || 'No se pudo enviar', 'error');
                     }
@@ -610,44 +831,9 @@
                 }
             });
         }
-
-        @*// --- 8. MONITOR DE MENSAJES NUEVOS (BADGES ROJOS) ---
         function monitorearMensajesNuevos() {
-            $(".btn-ver").each(function() {
-                let info = $(this).data("info");
-                let id = info.IdTicket || info.idTicket;
-                $.get('@Url.Action("ObtenerUltimoComentarioId", "Home")', { idTicket: id }, function (res) {
-                    if (res.ultimoId > (ultimoIdComentarioVisto[id] || 0)) {
-                        // Si no estamos viendo ese ticket o esa pestaña, mostramos badge rojo
-                        if (!ticketSeleccionado || (ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket) != id || !$("#chatTab").hasClass("active")) {
-                            $(`#notif-${id}`).removeClass("d-none");
-                        }
-                    }
-                });
-            });
-        }*@
-        function monitorearMensajesNuevos() {
-            $(".btn-ver").each(function() {
-                let id = $(this).data("info").IdTicket || $(this).data("info").idTicket;
-
-                $.get('@Url.Action("ObtenerEstadoChat", "Home")', { idTicket: id }, function (res) {
-                    // Actualizamos el ID global por si hay cambios
-                    ultimoIdComentarioVisto[id] = res.ultimoId;
-
-                    // Si el último no soy yo, evaluar si mostrar badge
-                    if (res.ultimoId > 0 && res.idAutor !== idUsuarioLogueado) {
-                        const ticketAbiertoId = ticketSeleccionado?.IdTicket || ticketSeleccionado?.idTicket;
-
-                        // Si no es el ticket que tengo abierto O si tengo abierta la pestaña de Info y no la de Chat
-                        if (ticketAbiertoId != id || !$("#chatTab").hasClass("active")) {
-                            $(`#notif-${id}`).removeClass("d-none");
-                        }
-                    } else {
-                        // Si yo respondí o no hay mensajes, desaparece
-                        $(`#notif-${id}`).addClass("d-none");
-                    }
-                });
-            });
+       
+            sincronizarEstadosChatMasivo();
         }
 
         // --- 9. OTRAS UTILIDADES ---
@@ -742,7 +928,12 @@
                             if (response.success) {
                                 Swal.fire('Éxito', 'Ticket actualizado', 'success').then(() => {
                                     refrescarTablaTickets();
+                                    sincronizarEstadosChatMasivo();
                                     // PASO CLAVE: Pasamos el objeto con el NUEVO estado para que verDetalle lo oculte
+                                    // --- LO NUEVO: Si el estado nuevo es Cerrado (ID 4), bloqueamos el chat YA ---
+                                    if (nuevoEstadoId === 4) {
+                                        bloquearChatVisualmente();
+                                    }
                                     verDetalle(ticketData);
                                 });
                             } else {
@@ -778,6 +969,7 @@
                             $("#seccionDetalle").hide();
                             $("#detalleVacio").show();
                             ticketSeleccionado = null;
+
                         });
                     } else {
                         Swal.fire('Error', res.mensaje || 'No se pudo guardar', 'error');
@@ -817,5 +1009,17 @@
                 }
             }
         });
+        function bloquearChatVisualmente() {
+            $("#txtMensajeChat").prop("disabled", true)
+                .val("")
+                .attr("placeholder", "Caso cerrado - No se admiten más mensajes");
+            $(".btn-primary[onclick='enviarComentario()']").prop("disabled", true);
+            $("#fArchivoChat").prop("disabled", true);
+            $(".fa-paper-plane").closest("button").addClass("btn-secondary").removeClass("bg-primary");
+
+            // Opcional: Ocultar el botón de guardar si ya está cerrado
+            $("#btnGuardarTicket").hide();
+        }
+
     </script>
 }

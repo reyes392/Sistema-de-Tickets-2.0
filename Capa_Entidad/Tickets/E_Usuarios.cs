@@ -31,5 +31,10 @@ namespace Capa_Entidad.Tickets
         public string? Categoria { get; set; }
 
 
+        public string? IpRouter { get; set; }
+        public string? IpDvr { get; set; }
+        public string? IpServer { get; set; }
+        public string? FotoPerfil { get; set; } // <--- Nuevo campo
+
     }
 }

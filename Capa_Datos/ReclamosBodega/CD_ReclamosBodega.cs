@@ -8,6 +8,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ChatEstadoDTO = Capa_Entidad.ReclamosBodega.ChatEstadoDTO;
 
 namespace Capa_Datos.ReclamosBodega
 {
@@ -64,6 +65,7 @@ namespace Capa_Datos.ReclamosBodega
 
                                     Registro = dr["REGISTRO"] == DBNull.Value ? null : Convert.ToDateTime(dr["REGISTRO"]),
                                     Modificacion = dr["MODIFICACION"] == DBNull.Value ? null : Convert.ToDateTime(dr["MODIFICACION"]),
+
                                 });
                             }
                         }
@@ -175,33 +177,55 @@ namespace Capa_Datos.ReclamosBodega
             catch (Exception ex) { mensaje = ex.Message; resultado = false; }
             return resultado;
         }
-        public Capa_Entidad.ReclamosBodega.ChatEstadoDTO ObtenerEstadoUltimoMensaje(int idTicket)
+     
+
+        public List<ChatEstadoDTO> ObtenerEstadosUltimosMensajesReclamos(List<int> idsReclamos)
         {
-            Capa_Entidad.ReclamosBodega.ChatEstadoDTO dto = new Capa_Entidad.ReclamosBodega.ChatEstadoDTO { UltimoId = 0, IdAutor = 0 };
+            List<ChatEstadoDTO> lista = new List<ChatEstadoDTO>();
+            if (idsReclamos == null || !idsReclamos.Any()) return lista;
+
             try
             {
                 using (var cn = new SqlConnection(_connectionString))
                 {
-                    string query = @"SELECT TOP 1 ID_COMENTARIO, ID_USUARIO 
-                             FROM RECLAMOS_COMENTARIOS 
-                             WHERE ID_RECLAMO = @id 
-                             ORDER BY ID_COMENTARIO DESC";
+                    // Unimos los IDs para el IN (...)
+                    string idsFormateados = string.Join(",", idsReclamos);
+
+                    string query = $@"
+                WITH UltimosMensajes AS (
+                    SELECT 
+                        ID_RECLAMO, 
+                        ID_COMENTARIO, 
+                        ID_USUARIO,
+                        ROW_NUMBER() OVER(PARTITION BY ID_RECLAMO ORDER BY ID_COMENTARIO DESC) as Fila
+                    FROM RECLAMOS_COMENTARIOS
+                    WHERE ID_RECLAMO IN ({idsFormateados})
+                )
+                SELECT ID_RECLAMO, ID_COMENTARIO, ID_USUARIO
+                FROM UltimosMensajes
+                WHERE Fila = 1";
 
                     SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@id", idTicket);
                     cn.Open();
                     using (SqlDataReader dr = cmd.ExecuteReader())
                     {
-                        if (dr.Read())
+                        while (dr.Read())
                         {
-                            dto.UltimoId = Convert.ToInt32(dr["ID_COMENTARIO"]);
-                            dto.IdAutor = Convert.ToInt32(dr["ID_USUARIO"]);
+                            lista.Add(new ChatEstadoDTO
+                            {
+                                IdReclamo = Convert.ToInt32(dr["ID_RECLAMO"]), // Reutilizamos el DTO o creamos uno de Reclamos
+                                UltimoId = Convert.ToInt32(dr["ID_COMENTARIO"]),
+                                IdAutor = Convert.ToInt32(dr["ID_USUARIO"])
+                            });
                         }
                     }
                 }
             }
-            catch (Exception) { /* Manejar error */ }
-            return dto;
+            catch (Exception ex)
+            {
+                // Log error
+            }
+            return lista;
         }
     }
 }

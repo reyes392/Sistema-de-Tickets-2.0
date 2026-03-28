@@ -8,6 +8,7 @@ namespace Capa_Entidad.ReclamosBodega
 {
     public class ChatEstadoDTO
     {
+        public int IdReclamo { get; set; }
         public int UltimoId { get; set; }
         public int IdAutor { get; set; }
     }

@@ -18,6 +18,6 @@ namespace Capa_Entidad.Tickets
         public string? Extension { get; set; }
         public DateTime FechaRegistro { get; set; }
 
-
+        public string? FotoPerfil { get; set; } // <--- Debe existir exactamente así
     }
 }

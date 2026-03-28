@@ -18,7 +18,7 @@ namespace Capa_Negocios.Tickets
             // 1. Si hay un archivo, procesamos el guardado físico primero
             if (archivo != null && archivo.Length > 0)
             {
-                string folderPath = Path.Combine(webRootPath, "uploads", "comentarios");
+                string folderPath = Path.Combine(webRootPath, "uploads", "ticketscomentarios");
                 if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
 
                 string extension = Path.GetExtension(archivo.FileName).ToLower();
@@ -33,7 +33,7 @@ namespace Capa_Negocios.Tickets
                 // Llenamos los datos del adjunto en el objeto entidad
                 obj.NombreArchivo = archivo.FileName;
                 obj.Extension = extension;
-                obj.RutaArchivo = "/uploads/comentarios/" + nombreSistema; // Ruta relativa para la web
+                obj.RutaArchivo = "/uploads/ticketscomentarios/" + nombreSistema; // Ruta relativa para la web
             }
 
             // 2. Enviamos a la base de datos

@@ -21,114 +21,155 @@ namespace Capa_Datos.Tickets
         // Obtener usuario por nombre de usuario
         public E_Usuarios ObtenerUsuario(string userName)
         {
-            E_Usuarios usuario = null;
-            using (var cn = new SqlConnection(_connectionString))
-            {
-                // Ajusta los nombres de columnas a tu base de datos
-                string query = "SELECT ID_USUARIO, USUARIO, CLAVE, ID_ROL FROM USUARIOS WHERE USUARIO = @user AND ID_ESTADO = 1";
-                SqlCommand cmd = new SqlCommand(query, cn);
-                cmd.Parameters.AddWithValue("@user", userName);
-                cn.Open();
 
-                using (var dr = cmd.ExecuteReader())
+            try
+            {
+                E_Usuarios usuario = null;
+                using (var cn = new SqlConnection(_connectionString))
                 {
-                    if (dr.Read())
+                    // Ajusta los nombres de columnas a tu base de datos
+                    string query = "SELECT ID_USUARIO, USUARIO, CLAVE, ID_ROL, NOMBRES, APELLIDOS, FOTO_PERFIL FROM USUARIOS WHERE USUARIO = @user AND ID_ESTADO = 1";
+                    SqlCommand cmd = new SqlCommand(query, cn);
+                    cmd.Parameters.AddWithValue("@user", userName);
+                    cn.Open();
+
+                    using (var dr = cmd.ExecuteReader())
                     {
-                        usuario = new E_Usuarios
+                        if (dr.Read())
                         {
-                            IdUsuario = Convert.ToInt32(dr["ID_USUARIO"]),
-                            UserName = dr["USUARIO"].ToString(),
-                            Clave = dr["CLAVE"].ToString(),
-                            IdRol = Convert.ToInt32(dr["ID_ROL"])
-                        };
+                            usuario = new E_Usuarios
+                            {
+                                IdUsuario = Convert.ToInt32(dr["ID_USUARIO"]),
+                                UserName = dr["USUARIO"].ToString(),
+                                Clave = dr["CLAVE"].ToString(),
+                                IdRol = Convert.ToInt32(dr["ID_ROL"]),// IMPORTANTÍSIMO: Llenar estos campos para que el Controller los vea
+                                Nombres = dr["NOMBRES"].ToString(),
+                                Apellidos = dr["APELLIDOS"].ToString(),
+                                FotoPerfil = dr["FOTO_PERFIL"] != DBNull.Value ? dr["FOTO_PERFIL"].ToString() : ""
+                            };
+                        }
                     }
                 }
+                return usuario;
             }
-            return usuario;
+            catch (Exception)
+            {
+
+                throw;
+            }
+           
         }
 
         // Obtener usuario por ID
         public E_Usuarios ObtenerUsuarioPorId(int idUsuario)
         {
-            E_Usuarios u = null;
-
-            using (var cn = new SqlConnection(_connectionString))
+            try
             {
-                string query = @"SELECT * FROM USUARIOS WHERE ID_USUARIO = @id";
-                SqlCommand cmd = new SqlCommand(query, cn);
-                cmd.Parameters.AddWithValue("@id", idUsuario);
+                E_Usuarios u = null;
 
-                cn.Open();
-
-                using (var dr = cmd.ExecuteReader())
+                using (var cn = new SqlConnection(_connectionString))
                 {
-                    if (dr.Read())
+                    string query = @"SELECT * FROM USUARIOS WHERE ID_USUARIO = @id";
+                    SqlCommand cmd = new SqlCommand(query, cn);
+                    cmd.Parameters.AddWithValue("@id", idUsuario);
+
+                    cn.Open();
+
+                    using (var dr = cmd.ExecuteReader())
                     {
-                        u = new E_Usuarios
+                        if (dr.Read())
                         {
-                            IdUsuario = Convert.ToInt32(dr["ID_USUARIO"]),
-                            Nombres = dr["NOMBRES"].ToString(),
-                            Apellidos = dr["APELLIDOS"].ToString(),
-                            UserName = dr["USUARIO"].ToString(),
-                            Clave = dr["CLAVE"].ToString(),
-                            IdRol = Convert.ToInt32(dr["ID_ROL"]),
-                            IdEstado = Convert.ToInt32(dr["ID_ESTADO"]),
-                            IdCategoria = Convert.ToInt32(dr["ID_CATEGORIA"]),
-                            Correo = dr["CORREO"].ToString()
-                        };
+                            u = new E_Usuarios
+                            {
+                                IdUsuario = Convert.ToInt32(dr["ID_USUARIO"]),
+                                Nombres = dr["NOMBRES"].ToString(),
+                                Apellidos = dr["APELLIDOS"].ToString(),
+                                UserName = dr["USUARIO"].ToString(),
+                                Clave = dr["CLAVE"].ToString(),
+                                IdRol = Convert.ToInt32(dr["ID_ROL"]),
+                                IdEstado = Convert.ToInt32(dr["ID_ESTADO"]),
+                                IdCategoria = Convert.ToInt32(dr["ID_CATEGORIA"]),
+                                Correo = dr["CORREO"].ToString(),
+                                FotoPerfil = dr["FOTO_PERFIL"] != DBNull.Value ? dr["FOTO_PERFIL"].ToString() : ""
+                            };
+                        }
                     }
                 }
-            }
 
-            return u;
+                return u;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+          
         }
 
 
         // Obtener permisos por rol
         public List<string> ObtenerPermisosPorRol(int idRol)
         {
-            var lista = new List<string>();
-            using (var cn = new SqlConnection(_connectionString))
+            try
             {
-                string query = @"
+                var lista = new List<string>();
+                using (var cn = new SqlConnection(_connectionString))
+                {
+                    string query = @"
                     SELECT P.CODIGO
                     FROM PERMISOS P
                     INNER JOIN ROL_PERMISO RP ON RP.ID_PERMISO = P.ID_PERMISO
                     WHERE RP.ID_ROL = @idRol
                      order by P.ID_PERMISO ASC";
-                SqlCommand cmd = new SqlCommand(query, cn);
-                cmd.Parameters.AddWithValue("@idRol", idRol);
-                cn.Open();
-                using (var dr = cmd.ExecuteReader())
-                {
-                    while (dr.Read())
-                        lista.Add(dr["CODIGO"].ToString());
+                    SqlCommand cmd = new SqlCommand(query, cn);
+                    cmd.Parameters.AddWithValue("@idRol", idRol);
+                    cn.Open();
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                            lista.Add(dr["CODIGO"].ToString());
+                    }
                 }
+                return lista;
             }
-            return lista;
+            catch (Exception)
+            {
+
+                throw;
+            }
+        
         }
 
         // Obtener permisos adicionales de un usuario
         public List<string> ObtenerPermisosUsuario(int idUsuario)
         {
-            var lista = new List<string>();
-            using (var cn = new SqlConnection(_connectionString))
+            try
             {
-                string query = @"
+                var lista = new List<string>();
+                using (var cn = new SqlConnection(_connectionString))
+                {
+                    string query = @"
                     SELECT P.CODIGO
                     FROM PERMISOS P
                     INNER JOIN USUARIOS_PERMISOS UP ON UP.ID_PERMISO = P.ID_PERMISO
                     WHERE UP.ID_USUARIO = @idUsuario";
-                SqlCommand cmd = new SqlCommand(query, cn);
-                cmd.Parameters.AddWithValue("@idUsuario", idUsuario);
-                cn.Open();
-                using (var dr = cmd.ExecuteReader())
-                {
-                    while (dr.Read())
-                        lista.Add(dr["CODIGO"].ToString());
+                    SqlCommand cmd = new SqlCommand(query, cn);
+                    cmd.Parameters.AddWithValue("@idUsuario", idUsuario);
+                    cn.Open();
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                            lista.Add(dr["CODIGO"].ToString());
+                    }
                 }
+                return lista;
             }
-            return lista;
+            catch (Exception)
+            {
+
+                throw;
+            }
+      
         }
 
     }

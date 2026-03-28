@@ -18,7 +18,7 @@
             </div>
 
             <div class="table-responsive shadow-sm rounded">
-                <table class="table table-sm table-hover border">
+                <table class="table table-sm table-hover border" id="tablaRoles">
                     <thead class="table-dark">
                         <tr>
                             <th style="width: 15%">ID</th>
@@ -29,15 +29,15 @@
                     <tbody>
                         @foreach (var rol in Model.ListaRoles)
                         {
-                        <tr>
-                            <td class="fw-bold">@rol.IdRol</td>
-                            <td>@rol.Descripcion</td>
-                            <td class="text-center">
-                                <button class="btn btn-warning btn-sm shadow-sm" onclick="editarRol(@rol.IdRol, '@rol.Descripcion')">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td class="fw-bold">@rol.IdRol</td>
+                                <td>@rol.Descripcion</td>
+                                <td class="text-center">
+                                    <button class="btn btn-warning btn-sm shadow-sm" onclick="editarRol(@rol.IdRol, '@rol.Descripcion')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
                         }
                     </tbody>
                 </table>
@@ -47,7 +47,7 @@
         <div class="col-md-6">
             <h2 class="mb-3"><i class="fas fa-users text-info"></i> Usuarios</h2>
             <div class="table-responsive shadow-sm rounded">
-                <table class="table table-sm table-hover border">
+                <table class="table table-sm table-hover border" id="tablaUsuarios">
                     <thead class="table-dark">
                         <tr>
                             <th>Usuario</th>
@@ -58,18 +58,18 @@
                     <tbody>
                         @foreach (var u in Model.ListaUsuarios)
                         {
-                        <tr>
-                            <td>
-                                <div class="fw-bold">@u.UserName</div>
-                                <small class="text-muted">@u.Nombres</small>
-                            </td>
-                            <td><span class="badge bg-secondary">@u.Rol</span></td>
-                            <td class="text-center">
-                                <button class="btn btn-info btn-sm text-white shadow-sm" onclick="gestionarPermisosIndividuales(@u.IdUsuario, '@u.Nombres')">
-                                    <i class="fas fa-key"></i>
-                                </button>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@u.UserName</div>
+                                    <small class="text-muted">@u.Apellidos</small>
+                                </td>
+                                <td><span class="badge bg-secondary">@u.Rol</span></td>
+                                <td class="text-center">
+                                    <button class="btn btn-info btn-sm text-white shadow-sm" onclick="gestionarPermisosIndividuales(@u.IdUsuario, '@u.Apellidos')">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                </td>
+                            </tr>
                         }
                     </tbody>
                 </table>
@@ -239,5 +239,41 @@
                 if (!resp.success) alert(resp.mensaje);
             });
         }
+
+        $(document).ready(function () {
+
+            $('#tablaRoles').DataTable({
+                pageLength: 5,
+                lengthMenu: [5, 10, 20],
+                language: {
+                    lengthMenu: "Mostrar _MENU_",
+                    zeroRecords: "Sin datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "Sin registros",
+                    search: "Buscar:",
+                    paginate: {
+                        next: "›",
+                        previous: "‹"
+                    }
+                }
+            });
+
+            $('#tablaUsuarios').DataTable({
+                pageLength: 5,
+                lengthMenu: [5, 10, 20],
+                language: {
+                    lengthMenu: "Mostrar _MENU_",
+                    zeroRecords: "Sin datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "Sin registros",
+                    search: "Buscar:",
+                    paginate: {
+                        next: "›",
+                        previous: "‹"
+                    }
+                }
+            });
+
+        });
     </script>
 }

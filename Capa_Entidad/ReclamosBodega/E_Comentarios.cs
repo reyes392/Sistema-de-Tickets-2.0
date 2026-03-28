@@ -17,5 +17,6 @@ namespace Capa_Entidad.ReclamosBodega
         public string? RutaArchivo { get; set; }
         public string? Extension { get; set; }
         public DateTime FechaRegistro { get; set; }
+        public string? FotoPerfil { get; set; } // <--- Debe existir exactamente así
     }
 }

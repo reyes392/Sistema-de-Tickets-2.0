@@ -8,6 +8,7 @@ namespace Capa_Entidad.Tickets
 {
     public class ChatEstadoDTO
     {
+        public int IdTicket { get; set; } // <--- CRÍTICO: Para mapear en el cliente
         public int UltimoId { get; set; }
         public int IdAutor { get; set; }
     }

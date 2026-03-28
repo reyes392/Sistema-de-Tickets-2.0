@@ -2,11 +2,11 @@
 @inject IHttpContextAccessor HttpContextAccessor
 
 @{
+
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString()?.ToLower();
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString()?.ToLower();
 
     var nombreUsuario = HttpContextAccessor.HttpContext.Session.GetString("NombreUsuario");
-
     var permisosString = HttpContextAccessor.HttpContext.Session.GetString("Permisos");
 
     var permisos = string.IsNullOrEmpty(permisosString)
@@ -21,6 +21,23 @@
 
     bool IsMenuOpen(params string[] actions)
         => actions.Any(a => a.ToLower() == currentAction);
+
+    // Recuperamos datos de sesión
+
+    // Recuperamos los datos tal cual se guardan en el Login
+    // Nota: Como en el Login guardas Nombre + Apellido en "NombreUsuario", 
+    // solo necesitamos esa variable.
+    // Extraemos directamente de la sesión
+    // En el _Layout.cshtml, intenta cambiar esto:
+    var nombreSession = Context.Session.GetString("NombreUsuario");
+    var fotoSession = Context.Session.GetString("FotoPerfil");
+
+    // Si la sesión es nula, intentamos forzar un valor para ver si el problema es la sesión o el string
+    string nombreFinal = !string.IsNullOrEmpty(nombreSession) ? nombreSession : "Usuario No Identificado";
+
+    string rutaFoto = !string.IsNullOrEmpty(fotoSession)
+        ? Url.Content("~/uploads/perfiles/" + fotoSession)
+        : Url.Content("~/sbadmin2/img/undraw_profile.svg");
 }
 
 <!DOCTYPE html>
@@ -33,15 +50,14 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Sistema_de_Tickets_2._0.styles.css" asp-append-version="true" />
-    @*<title>SB Admin 2 - Cards</title>*@
 
-    <!-- Custom fonts for this template-->
+    <!-- Custom fonts -->
     <link href="~/sbadmin2/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
-          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,700,800,900" rel="stylesheet">
 
-    <!-- Custom styles for this template-->
+    <!-- SB Admin 2 -->
     <link href="~/sbadmin2/css/sb-admin-2.min.css" rel="stylesheet">
+
 </head>
 
 <body id="page-top">
@@ -51,18 +67,16 @@
         <!-- SIDEBAR -->
         <ul class="navbar-nav bg-black sidebar sidebar-dark accordion" id="accordionSidebar">
 
-            <!-- Brand -->
-            <a class="sidebar-brand d-flex align-items-center justify-content-center"
-               asp-controller="Home" asp-action="Index">
-                <div class="sidebar-brand-icon rotate-n-15">
-                    <i class="fas fa-ticket-alt"></i>
-                </div>
-                <div class="sidebar-brand-text mx-3">Sistema Tickets</div>
-            </a>
+            @*<a class="sidebar-brand d-flex align-items-center justify-content-center"
+                   asp-controller="Home" asp-action="Index">
+                    <div class="sidebar-brand-icon rotate-n-15">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <div class="sidebar-brand-text mx-3">Sistema Tickets</div>
+                </a>
 
-            <hr class="sidebar-divider my-0">
-
-            <!-- DASHBOARD -->
+                <hr class="sidebar-divider my-0">*@
+            <hr class="sidebar-divider">
             @if (Tiene("INDEX_VER"))
             {
                 <li class="nav-item @(IsActive("index") ? "active" : "")">
@@ -73,25 +87,18 @@
                 </li>
             }
 
-            <hr class="sidebar-divider">
 
-            <!-- ADMINISTRACION -->
-            @if (Tiene("USUARIOS_VER") ||
-              Tiene("URGENCIAS_TICKET_VER") ||
-              Tiene("INCIDENCIAS_TICKET_VER") ||
-              Tiene("CAJAS_VER") ||
-              Tiene("EQUIPOS_VER"))
+
+            @if (Tiene("USUARIOS_VER") || Tiene("CAJAS_VER") || Tiene("EQUIPOS_VER"))
             {
-                <li class="nav-item @(IsMenuOpen("usuarios","tipourgenciatickets","incidenciastickets","cajas","equipos") ? "active" : "")">
-
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
-                       data-target="#collapseAdmin">
+                <li class="nav-item @(IsMenuOpen("usuarios","cajas","equipos") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAdmin">
                         <i class="fas fa-fw fa-cog"></i>
                         <span>Administración</span>
                     </a>
 
                     <div id="collapseAdmin"
-                         class="collapse @(IsMenuOpen("usuarios","tipourgenciatickets","incidenciastickets","cajas","equipos") ? "show" : "")"
+                         class="collapse @(IsMenuOpen("usuarios","cajas","equipos") ? "show" : "")"
                          data-parent="#accordionSidebar">
 
                         <div class="bg-white py-2 collapse-inner rounded">
@@ -101,22 +108,6 @@
                                 <a class="collapse-item @(IsActive("usuarios") ? "active" : "")"
                                    asp-controller="Home" asp-action="Usuarios">
                                     <i class="fas fa-user"></i> Usuarios
-                                </a>
-                            }
-
-                            @if (Tiene("URGENCIAS_TICKET_VER"))
-                            {
-                                <a class="collapse-item @(IsActive("tipourgenciatickets") ? "active" : "")"
-                                   asp-controller="Home" asp-action="TipoUrgenciaTickets">
-                                    <i class="fas fa-clock"></i> Urgencias
-                                </a>
-                            }
-
-                            @if (Tiene("INCIDENCIAS_TICKET_VER"))
-                            {
-                                <a class="collapse-item @(IsActive("incidenciastickets") ? "active" : "")"
-                                   asp-controller="Home" asp-action="IncidenciasTickets">
-                                    <i class="fas fa-tools"></i> Incidencias
                                 </a>
                             }
 
@@ -140,73 +131,10 @@
                     </div>
                 </li>
             }
-
-            <!-- SOLICITUDES -->
-            @if (Tiene("TICKET_VER"))
-            {
-                <li class="nav-item @(IsMenuOpen("tickets") ? "active" : "")">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
-                       data-target="#collapseTickets">
-                        <i class="fas fa-ticket-alt"></i>
-                        <span>Solicitudes</span>
-                    </a>
-
-                    <div id="collapseTickets"
-                         class="collapse @(IsMenuOpen("tickets") ? "show" : "")"
-                         data-parent="#accordionSidebar">
-
-                        <div class="bg-white py-2 collapse-inner rounded">
-                            <a class="collapse-item @(IsActive("tickets") ? "active" : "")"
-                               asp-controller="Home" asp-action="Tickets">
-                                <i class="fas fa-tags"></i> Tickets
-                            </a>
-                        </div>
-                    </div>
-                </li>
-            }
-            <!-- BODEGA -->
-            @if (Tiene("PERMISOS_VER"))
-            {
-                <li class="nav-item @(IsMenuOpen("tiposincidenciasreclamos","reclamos") ? "active" : "")">
-
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
-                       data-target="#collapseReclamos">
-                        <i class="fas fa-boxes"></i>
-                        <span>Bodega</span>
-                    </a>
-
-                    <div id="collapseReclamos"
-                         class="collapse @(IsMenuOpen("tiposincidenciasreclamos","reclamos") ? "show" : "")"
-                         data-parent="#accordionSidebar">
-
-                        <div class="bg-white py-2 collapse-inner rounded">
-
-                            @if (Tiene("INCIDENCIAS_RECLAMOS_VER"))
-                            {
-                                <a class="collapse-item @(IsActive("tiposincidenciasreclamos") ? "active" : "")"
-                                   asp-controller="ReclamosBodega" asp-action="TiposIncidenciasReclamos">
-                                    Tipo de incidencia
-                                </a>
-                            }
-                            @if (Tiene("RECLAMOS_VER"))
-                            {
-                                <a class="collapse-item @(IsActive("reclamos") ? "active" : "")"
-                                   asp-controller="ReclamosBodega" asp-action="Reclamos">
-                                  Reclamos
-                                </a>
-                            }
-
-                        </div>
-                    </div>
-                </li>
-            }
-            <!-- SEGURIDAD -->
             @if (Tiene("PERMISOS_VER") || Tiene("ROLES_VER"))
             {
                 <li class="nav-item @(IsMenuOpen("permisos","rolesypermisos") ? "active" : "")">
-
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse"
-                       data-target="#collapseSeguridad">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseSeguridad">
                         <i class="fas fa-shield-alt"></i>
                         <span>Seguridad</span>
                     </a>
@@ -233,6 +161,295 @@
                                 </a>
                             }
 
+
+                        </div>
+                    </div>
+                </li>
+            }
+            @if (Tiene("TICKET_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("tickets","tipourgenciatickets","incidenciastickets") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTickets">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Soporte</span>
+                    </a>
+
+                    <div id="collapseTickets"
+                         class="collapse @(IsMenuOpen("tickets","tipourgenciatickets","incidenciastickets") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("URGENCIAS_TICKET_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tipourgenciatickets") ? "active" : "")"
+                                   asp-controller="Home" asp-action="TipoUrgenciaTickets">
+                                    <i class="fas fa-clock"></i> Urgencias
+                                </a>
+                            }
+
+                            @if (Tiene("INCIDENCIAS_TICKET_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("incidenciastickets") ? "active" : "")"
+                                   asp-controller="Home" asp-action="IncidenciasTickets">
+                                    <i class="fas fa-tools"></i> Incidencias
+                                </a>
+                            }
+
+                            <a class="collapse-item @(IsActive("tickets") ? "active" : "")"
+                               asp-controller="Home" asp-action="Tickets">
+                                <i class="fas fa-tags"></i> Tickets
+                            </a>
+
+                        </div>
+                    </div>
+                </li>
+            }
+
+            @if (Tiene("RECLAMOS_VER") || Tiene("RECLAMO_CREAR_EDITAR"))
+            {
+                <li class="nav-item @(IsMenuOpen("tiposincidenciasreclamos","reclamos") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseReclamos">
+                        <i class="fas fa-boxes"></i>
+                        <span>Bodega</span>
+                    </a>
+
+                    <div id="collapseReclamos"
+                         class="collapse @(IsMenuOpen("tiposincidenciasreclamos","reclamos") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("INCIDENCIAS_RECLAMOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tiposincidenciasreclamos") ? "active" : "")"
+                                   asp-controller="ReclamosBodega" asp-action="TiposIncidenciasReclamos">
+                                    Tipo de incidencia
+                                </a>
+                            }
+
+                            @if (Tiene("RECLAMOS_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("reclamos") ? "active" : "")"
+                                   asp-controller="ReclamosBodega" asp-action="Reclamos">
+                                    Reclamos
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+
+
+            @if (Tiene("INCIDENCIAS_AUDITORIAZ_VER") || Tiene("ASIGNACIONES_VER_AUDITORIA_Z") || Tiene("AUDITORIAZ_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("tiposincidenciasauditoriaz","asignacionsucursales_auditoriaz","auditoriaz") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAuditoriaZ">
+                        <i class="fas fa-boxes"></i>
+                        <span>Auditoria Z</span>
+                    </a>
+
+                    <div id="collapseAuditoriaZ"
+                         class="collapse @(IsMenuOpen("tiposincidenciasauditoriaz","asignacionsucursales_auditoriaz","auditoriaz") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            @if (Tiene("ASIGNACIONES_VER_AUDITORIA_Z"))
+                            {
+                                <a class="collapse-item @(IsActive("asignacionsucursales_auditoriaz") ? "active" : "")"
+                                   asp-controller="AuditoriaZ" asp-action="AsignacionSucursales_AuditoriaZ">
+                                    Asignaciones
+                                </a>
+                            }
+                            @if (Tiene("INCIDENCIAS_AUDITORIAZ_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tiposincidenciasauditoriaz") ? "active" : "")"
+                                   asp-controller="AuditoriaZ" asp-action="TiposIncidenciasAuditoriaZ">
+                                    Tipo de incidencia
+                                </a>
+                            }
+                            @if (Tiene("AUDITORIAZ_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("auditoriaz") ? "active" : "")"
+                                   asp-controller="AuditoriaZ" asp-action="AuditoriaZ">
+                                    Auditoria Z
+                                </a>
+                            }
+
+
+                        </div>
+                    </div>
+                </li>
+            }
+
+            @if (Tiene("ASIGNACIONES_VER") || Tiene("INCIDENCIAS_CANJES_VER") || Tiene("CANJES_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("asignacionsucursales","tiposincidenciascanjes","canjes") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseCanjes">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Canjes</span>
+                    </a>
+
+                    <div id="collapseCanjes"
+                         class="collapse @(IsMenuOpen("asignacionsucursales","tiposincidenciascanjes","canjes") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("ASIGNACIONES_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("asignacionsucursales") ? "active" : "")"
+                                   asp-controller="Canjes" asp-action="AsignacionSucursales">
+                                    Asignaciones
+                                </a>
+                            }
+
+                            @if (Tiene("INCIDENCIAS_CANJES_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tiposincidenciascanjes") ? "active" : "")"
+                                   asp-controller="Canjes" asp-action="TiposIncidenciasCanjes">
+                                    Tipo de incidencia
+                                </a>
+                            }
+
+                            @if (Tiene("CANJES_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("canjes") ? "active" : "")"
+                                   asp-controller="Canjes" asp-action="Canjes">
+                                    Solicitudes
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+            @if (Tiene("INCIDENCIAS_ANULACIONES_VER") || Tiene("ANULACIONES_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("TiposIncidenciasAnulaciones","anulaciones") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAnulaciones">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Anulaciones</span>
+                    </a>
+
+                    <div id="collapseAnulaciones"
+                         class="collapse @(IsMenuOpen("tiposincidenciasanulaciones","anulaciones") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+                            @if (Tiene("INCIDENCIAS_ANULACIONES_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("tiposincidenciasanulaciones") ? "active" : "")"
+                                   asp-controller="Anulaciones" asp-action="TiposIncidenciasAnulaciones">
+                                    Tipos  Incidencias
+                                </a>
+                            }
+
+                            @if (Tiene("ANULACIONES_VER"))
+                            {
+                                <a class="collapse-item @(IsActive("rolesypermisos") ? "active" : "")"
+                                   asp-controller="Anulaciones" asp-action="Anulaciones">
+                                    Anulaciones
+                                </a>
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+            @if (Tiene("RECLAMOS_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("reclamosbodega","reportetickets","reporteanulaciones","reporteauditoriaz","reportescanjes") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseReportes">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Reportes</span>
+                    </a>
+
+                    <div id="collapseReportes"
+                         class="collapse @(IsMenuOpen("reclamosbodega","reportetickets") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+
+                            @if (Tiene("RECLAMOS_REPORTE"))
+                            {
+
+                                <a class="collapse-item @(IsActive("reclamosbodega") ? "active" : "")"
+                                   asp-controller="ReclamosBodega" asp-action="ReportesReclamos">
+                                    Reclamos
+                                </a>
+
+                            }
+
+                            @if (Tiene("TICKETS_REPORTE"))
+                            {
+
+                                <a class="collapse-item @(IsActive("reportetickets") ? "active" : "")"
+                                   asp-controller="Home" asp-action="ReporteTickets">
+                                    Tickets
+                                </a>
+
+                            }
+                            @if (Tiene("ANULACIONES_REPORTE"))
+                            {
+
+                                <a class="collapse-item @(IsActive("reporteanulaciones") ? "active" : "")"
+                                   asp-controller="Anulaciones" asp-action="ReporteAnulaciones">
+                                    Anulaciones
+                                </a>
+
+                            }
+                            @if (Tiene("AUDITORIAZ_REPORTE"))
+                            {
+
+                                <a class="collapse-item @(IsActive("reporteauditoriaz") ? "active" : "")"
+                                   asp-controller="AuditoriaZ" asp-action="ReporteAuditoriaZ">
+                                    Auditoria Z
+                                </a>
+
+                            }
+                            @if (Tiene("CANJES_REPORTE"))
+                            {
+
+                                <a class="collapse-item @(IsActive("reportescanjes") ? "active" : "")"
+                                   asp-controller="Canjes" asp-action="ReportesCanjes">
+                                   Canjes
+                                </a>
+
+                            }
+
+                        </div>
+                    </div>
+                </li>
+            }
+            @if (Tiene("MONITOREO_VER"))
+            {
+                <li class="nav-item @(IsMenuOpen("monitoreo") ? "active" : "")">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMonitoreo">
+                        <i class="fas fa-satellite-dish"></i>
+                        <span>Panel de monitoreo</span>
+                    </a>
+
+                    <div id="collapseMonitoreo"
+                         class="collapse @(IsMenuOpen("monitoreo") ? "show" : "")"
+                         data-parent="#accordionSidebar">
+
+                        <div class="bg-white py-2 collapse-inner rounded">
+
+
+                            @if (Tiene("MONITOREO_VER"))
+                            {
+
+                                <a class="collapse-item @(IsActive("monitoreo") ? "active" : "")"
+                                   asp-controller="Home" asp-action="Monitoreo">
+                                    Monitoreo
+                                </a>
+
+                            }
+
                         </div>
                     </div>
                 </li>
@@ -247,90 +464,146 @@
 
         </ul>
 
-        <!-- CONTENT WRAPPER -->
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
 
-                <!-- TOPBAR -->
                 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-
                     <ul class="navbar-nav ml-auto">
-
                         <li class="nav-item dropdown no-arrow">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown"
-                               role="button" data-toggle="dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-toggle="dropdown">
                                 <span class="mr-2 d-none d-lg-inline text-gray-600 small">
-                                    @nombreUsuario
+                                    @nombreFinal
                                 </span>
                                 <img class="img-profile rounded-circle"
-                                     src="~/sbadmin2/img/undraw_profile.svg">
+                                     src="@rutaFoto"
+                                     style="width: 35px; height: 35px; object-fit: cover; border: 1px solid #e3e6f0;">
                             </a>
 
                             <div class="dropdown-menu dropdown-menu-right shadow">
-                                <a class="dropdown-item" href="#">
+                                <a class="dropdown-item" asp-controller="Perfil" asp-action="Perfil">
                                     <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Profile
-                                </a>
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Settings
-                                </a>
-                                <a class="dropdown-item" href="#">
-                                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Activity Log
+                                    Mi Perfil
                                 </a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item"
-                                   asp-controller="Acceso"
-                                   asp-action="Logout">
+                                <a class="dropdown-item" asp-controller="Acceso" asp-action="Logout">
                                     <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
                                     Cerrar Sesión
                                 </a>
                             </div>
                         </li>
-
                     </ul>
                 </nav>
 
                 <div class="container-fluid">
+                    @*<button type="button" class="btn btn-danger" onclick="tocarTimbre()">
+                            <i class="fas fa-volume-up"></i> Desbloquear sonido
+                        </button>*@
                     @RenderBody()
                 </div>
 
             </div>
 
-            <!-- FOOTER -->
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto text-center">
                     <span class="text-muted">
-                        © @DateTime.Now.Year - Sistema de Tickets |
-                        Desarrollado por Ing. Abraham Reyes
+                        © @DateTime.Now.Year - Sistema de Tickets | Desarrollado por Ing. Abraham Reyes
                     </span>
                 </div>
             </footer>
 
         </div>
-
     </div>
-    <!-- Bootstrap core JavaScript-->
+
     <script src="~/sbadmin2/vendor/jquery/jquery.min.js"></script>
     <script src="~/sbadmin2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="~/sbadmin2/js/demo/datatables-demo.js"></script>
-    <!-- Core plugin JavaScript-->
     <script src="~/sbadmin2/vendor/jquery-easing/jquery.easing.min.js"></script>
-
-    <!-- Custom scripts for all pages-->
     <script src="~/sbadmin2/js/sb-admin-2.min.js"></script>
-
-
-
-
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
 
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/sbadmin2/vendor/datatables/jquery.dataTables.min.js"></script>
+    <script src="~/sbadmin2/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+    let cargaInicial = true;
+        /*   const audioUrl = "https://fonts.gstatic.com/s/i/productnotifications/v1/notification.mp3";*/
+        const audioUrl = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg";
+    let notificationSound = new Audio(audioUrl);
+    notificationSound.preload = "auto";
+
+    // Función principal para sonar
+    function tocarTimbre() {
+        let playPromise = notificationSound.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => {
+                console.warn("Audio bloqueado. Esperando interacción del usuario.");
+            });
+        }
+    }
+
+    function revisarNotificaciones() {
+        $.ajax({
+            url: '@Url.Action("VerificarNotificaciones", "Home")',
+            type: "GET",
+            dataType: "json",
+            success: function (res) {
+                console.log("Actividad detectada:", res.total);
+
+                if (cargaInicial) {
+                    cargaInicial = false;
+                    return;
+                }
+
+                if (res.total > 0) {
+                    tocarTimbre();
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'info',
+                        title: '¡Nueva Actividad!',
+                        text: 'Hay cambios recientes en el sistema.',
+                        showConfirmButton: false,
+                        timer: 10000
+                    });
+                }
+            }
+        });
+    }
+
+
+
+    $(document).ready(function () {
+        // --- DESBLOQUEADOR AUTOMÁTICO ---
+        // Cualquier clic en la página (menú, tablas, fondo) activará el audio
+        const desbloquearAudio = function () {
+            notificationSound.play().then(() => {
+                // Si entra aquí, ya tenemos permiso. Paramos el audio inmediatamente.
+                notificationSound.pause();
+                notificationSound.currentTime = 0;
+                console.log("🔊 Audio desbloqueado por interacción.");
+
+                // Quitamos los listeners para no gastar recursos
+                document.removeEventListener('click', desbloquearAudio);
+                document.removeEventListener('keydown', desbloquearAudio);
+            }).catch(e => {
+                console.log("Navegador aún no permite audio...");
+            });
+        };
+
+        // Escuchamos clics o teclas (para cuando el usuario navega)
+        document.addEventListener('click', desbloquearAudio);
+        document.addEventListener('keydown', desbloquearAudio);
+
+        // Iniciar el ciclo de revisión
+        setInterval(revisarNotificaciones, 20000);
+    });
+    </script>
+
 
 </body>
+@await RenderSectionAsync("Scripts", required: false)
+
 </html>

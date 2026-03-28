@@ -92,10 +92,16 @@ namespace Capa_Negocios.Tickets
 
             return nombreUnico;
         }
-        public ChatEstadoDTO ObtenerEstadoChat(int idTicket)
+  
+
+        public List<ChatEstadoDTO> ObtenerEstadosChats(List<int> idsTickets)
         {
-            return _dao.ObtenerEstadoUltimoMensaje(idTicket);
+            return _dao.ObtenerEstadosUltimosMensajes(idsTickets);
         }
 
+        public object ObtenerEstadosChats(int idTicket)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

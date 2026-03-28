@@ -61,7 +61,29 @@
         margin-left: 5px;
         animation: pulse 2s infinite;
     }
+    /* Contenedor del mensaje que permite alinear foto y texto */
+    .chat-message-container {
+        display: flex;
+        align-items: flex-end;
+        margin-bottom: 15px;
+    }
 
+    /* Foto de perfil pequeña en el chat */
+    .chat-avatar {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin: 0 8px;
+        border: 1px solid #ddd;
+        flex-shrink: 0; /* Evita que la foto se aplaste */
+    }
+
+    /* Ajuste para que el mensaje del remitente (derecha) se alinee al final */
+    .chat-right-container {
+        flex-direction: row-reverse;
+        text-align: right;
+    }
     @@keyframes pulse {
         0% {
             opacity: 1;
@@ -248,11 +270,11 @@
                 @* --- agregando nuevos --- *@
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Numero de Requisa</label>
-                    <input type="text" class="form-control" id="Nrequisa" autocomplete="off" maxlength="20" placeholder="A123456789">
+                    <input type="text" class="form-control" id="Nrequisa" autocomplete="off" maxlength="20" placeholder="ejemplo : A123456789">
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Fecha de la requisa</label>
-                    <input class="form-control" type="text" id="FechaRequisa" autocomplete="off" maxlength="20"  placeholder="25/01/2026">
+                    <input class="form-control" type="text" id="FechaRequisa" autocomplete="off" maxlength="20"  placeholder="ejemplo : 25/01/2026">
                 </div>
 
                 @* ---  --- *@
@@ -282,119 +304,142 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // --- 1. VARIABLES GLOBALES Y ESTADO ---
-      /*  let ticketSeleccionado = null;      // Guarda el objeto del ticket que se está viendo*/
-        let reclamoSeleccionado = null;      // Guarda el objeto del ticket que se está viendo
-        let chatTimer = null;               // Timer para refrescar el chat cada 3 segundos
-        let tituloOriginal = document.title;// Guarda "Tickets - Mi Sistema"
-        let intervaloPestaña = null;        // Timer para el parpadeo del título
-        let ultimoIdComentarioVisto = {};   // Diccionario { idTicket: ultimoIdChat } para badges rojos
-        /*  let versionTicketsActual = "";      // Sello de versión (ej: "12-48") para detectar cambios*/
-        let versionReclamoActual = ""; // Sello de versión (ej: "12-48") para detectar cambios*/
+       // --- FUNCIONES GLOBALES ---
+        window.verImagenFull = function (url) { if (url) window.open(url, '_blank'); };
 
-        // Datos de sesión desde C#
+        // --- 1. VARIABLES GLOBALES Y ESTADO ---
+        let reclamoSeleccionado = null;
+        let chatTimer = null;
+        let tituloOriginal = document.title;
+        let intervaloPestaña = null;
+        let ultimoIdComentarioVisto = {};
+        let versionReclamoActual = "";
+        let ultimaCantidadComentarios = 0;
+
         const idUsuarioLogueado = parseInt('@ViewBag.IdUsuarioLogueado') || 0;
         const nombreTecnicoLogueado = '@ViewBag.NombreUsuarioLogueado';
         const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
 
         $(document).ready(function () {
-            // --- 2. INICIALIZACIÓN ---
-
-            // Consultamos el estado real de cada chat al cargar la página
-            $(".btn-ver").each(function () {
-                let $btn = $(this);
-                let info = $btn.data("info");
-                let id = info.idReclamo || info.idReclamo;
-
-                // Usamos el nuevo método que devuelve ultimoId e idAutor
-                $.get('@Url.Action("ObtenerEstadoChat", "ReclamosBodega")', { idReclamo: id }, function (res) {
-
-                    // 1. Sincronizamos nuestro registro local para que el monitor sepa el punto de partida
-                    ultimoIdComentarioVisto[id] = res.ultimoId;
-
-                    // 2. LÓGICA DE CARGA INMEDIATA:
-                    // Si hay mensajes Y el último no lo escribí yo (el usuario logueado)
-                    if (res.ultimoId > 0 && res.idAutor !== idUsuarioLogueado) {
-                        // Mostramos el badge rojo de inmediato
-                        $(`#notif-${id}`).removeClass("d-none");
-                    } else {
-                        // Por seguridad, aseguramos que esté oculto si el último mensaje es mío
-                        $(`#notif-${id}`).addClass("d-none");
-                    }
-                });
+            $('#tblReclamos').DataTable({
+                pageLength: 10,
+                order: [],
+                language: { url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json" }
             });
 
-            // Obtenemos la "versión" actual de la base de datos al cargar
-            $.get('@Url.Action("ObtenerVersionReclamos", "ReclamosBodega")', function (v) {
-                versionReclamoActual = v;
-            });
+            // --- 2. INICIALIZACIÓN MASIVA ---
+            inicializarEstadosChats();
 
-            // --- 3. TIMERS (MONITORES) ---
+            // Obtener versión inicial
+            $.get('@Url.Action("ObtenerVersionReclamos", "ReclamosBodega")', v => { versionReclamoActual = v; });
 
-            // Monitor de cambios en la tabla (Nuevos tickets o cambios de estado)
-            setInterval(verificarCambiosReclamo, 10000);
-
-            // Monitor de mensajes nuevos en el chat (Badges rojos)
-            // Este seguirá funcionando cada 6 seg para mensajes que lleguen mientras estás conectado
-            setInterval(monitorearMensajesNuevos, 6000);
+            // --- 3. TIMERS ---
+            setInterval(verificarCambiosReclamo, 10000); // Cambios en tabla
+            setInterval(monitorearMensajesNuevos, 6000); // Mensajes nuevos (Masivo)
         });
 
+        // --- NUEVA FUNCIÓN: CARGA INICIAL MASIVA ---
+        function inicializarEstadosChats() {
+            let ids = [];
+            $(".btn-ver").each(function () {
+                let info = $(this).data("info");
+                ids.push(info.IdReclamo || info.idReclamo);
+            });
 
-        // --- 4. FUNCIÓN: DETECTAR CAMBIOS EN EL SERVIDOR (Para todos los usuarios) ---
+            if (ids.length === 0) return;
+
+            // Usamos el nuevo endpoint masivo que hicimos en el controlador
+            $.ajax({
+                url: '@Url.Action("ObtenerEstadosChatsReclamos", "ReclamosBodega")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(ids),
+                success: function (res) {
+                    res.forEach(estado => {
+                        const guardado = localStorage.getItem(`visto_u${idUsuarioLogueado}_r${estado.idReclamo}`);
+                        const ultimoVisto = guardado ? parseInt(guardado) : 0;
+
+                        ultimoIdComentarioVisto[estado.idReclamo] = Math.max(estado.ultimoId, ultimoVisto);
+
+                        if (estado.ultimoId > ultimoVisto && estado.idAutor !== idUsuarioLogueado) {
+                            $(`#notif-${estado.idReclamo}`).removeClass("d-none");
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- 4. FUNCIÓN: DETECTAR CAMBIOS EN EL SERVIDOR ---
         function verificarCambiosReclamo() {
-            // Quitamos el IF de rolUsuarioLogueado para que el Solicitante también actualice
             $.get('@Url.Action("ObtenerVersionReclamos", "ReclamosBodega")', function (nuevaVersion) {
-
-                // Si el sello "Conteo-Suma" cambió, algo pasó en la DB
                 if (versionReclamoActual !== "" && nuevaVersion !== versionReclamoActual) {
                     versionReclamoActual = nuevaVersion;
+                    refrescarTablaReclamos();
 
-                    refrescarTablaReclamos(); // Actualiza la tabla sin F5
-               
-
-                    // Notificamos visualmente en la pestaña solo si no es el usuario que está mirando el detalle
                     if (!intervaloPestaña) {
                         intervaloPestaña = setInterval(() => {
                             document.title = (document.title === tituloOriginal) ? "✨ ACTUALIZACIÓN ✨" : tituloOriginal;
                         }, 1000);
                     }
-
-                    // Si el usuario tenía un ticket abierto y este cambió, actualizamos los datos del detalle
-                    if (reclamoSeleccionado) {
-                        const idAbierto = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
-                        // Buscamos el botón de ese ticket en la nueva tabla para obtener su nueva data
-                        const $btnNuevo = $(`.btn-ver[data-info*='"idReclamo":${idAbierto}']`).first()
-                                       || $(`.btn-ver[data-info*='"idReclamo":${idAbierto}']`).first();
-
-                        if ($btnNuevo.length > 0) {
-                            reclamoSeleccionado = $btnNuevo.data("info");
-                            // Opcional: podrías llamar a verDetalle(ticketSeleccionado)
-                            // si quieres que los badges y botones cambien al instante
-                        }
-                    }
                 }
             });
         }
 
-        // --- 5. FUNCIÓN: REFRESCO SILENCIOSO DE TABLA ---
+     
         function refrescarTablaReclamos() {
-            // Pedimos el HTML de la página actual por debajo
             $.get(window.location.href, function (data) {
-                // Extraemos solo el contenido del <tbody> de la respuesta
                 const nuevoContenido = $(data).find("#tblReclamos tbody").html();
-                // Lo reemplazamos en nuestra tabla visible
                 $("#tblReclamos tbody").html(nuevoContenido);
-                console.log("Tabla actualizada dinámicamente.");
+
+                // IMPORTANTE: Volver a ejecutar la lógica de badges
+                setTimeout(() => {
+                    inicializarEstadosChats();
+                }, 100);
             });
         }
 
-        // --- 6. EVENTO: VER DETALLE (CLICK EN TABLA) ---
+        // --- 5. MONITOREO MASIVO DE MENSAJES (OPTIMIZADO) ---
+        function monitorearMensajesNuevos() {
+            let ids = [];
+            $(".btn-ver").each(function() {
+                ids.push($(this).data("info").IdReclamo || $(this).data("info").idReclamo);
+            });
+
+            if (ids.length === 0) return;
+
+            $.ajax({
+                url: '@Url.Action("ObtenerEstadosChatsReclamos", "ReclamosBodega")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(ids),
+                success: function (res) {
+                    const idAbierto = reclamoSeleccionado?.IdReclamo || reclamoSeleccionado?.idReclamo;
+
+                    res.forEach(estado => {
+                        const guardado = localStorage.getItem(`visto_u${idUsuarioLogueado}_r${estado.idReclamo}`);
+                        const ultimoVisto = guardado ? parseInt(guardado) : (ultimoIdComentarioVisto[estado.idReclamo] || 0);
+
+                        if (estado.ultimoId > ultimoVisto && estado.idAutor !== idUsuarioLogueado) {
+                            // Si estoy viendo este chat y la pestaña de chat está activa
+                            if (idAbierto == estado.idReclamo && $("#chatTab").hasClass("active")) {
+                                marcarComoLeido();
+                            } else {
+                                $(`#notif-${estado.idReclamo}`).removeClass("d-none");
+                            }
+                        } else {
+                            $(`#notif-${estado.idReclamo}`).addClass("d-none");
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- 6. EVENTO: VER DETALLE ---
         $(document).on("click", ".btn-ver", function () {
             let $btn = $(this);
             let info = $btn.data("info");
             const idReclamo = info.IdReclamo || info.idReclamo;
 
-            // Al hacer click, limpiamos el aviso parpadeante del título
             if (intervaloPestaña) {
                 clearInterval(intervaloPestaña);
                 intervaloPestaña = null;
@@ -403,15 +448,12 @@
 
             const idAsignadoActual = info.IdUsuarioAsignado || info.idUsuarioAsignado;
 
-            // Auto-asignación: Si no tiene técnico y yo soy Staff
             if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {
                 $.post('@Url.Action("TomarReclamo", "ReclamosBodega")', { idReclamo: idReclamo }, function (res) {
                     if (res.success) {
-                        // Actualizamos el objeto local y la fila visualmente
                         info.IdEstado = 5;
                         info.Estado = "En Proceso";
                         info.IdUsuarioAsignado = idUsuarioLogueado;
-                        info.UsuarioAsignado = nombreTecnicoLogueado;
                         $btn.data("info", info);
                         $btn.closest("tr").find(".badge").first().text("En Proceso").attr("class", "badge bg-info");
                     }
@@ -422,58 +464,58 @@
             }
         });
 
-       function verDetalle(reclamo) {
+        const formatearFecha = (f) => {
+
+            if (!f) return "N/A";
+
+            let d = new Date(f);
+
+            return isNaN(d) ? f : d.toLocaleString();
+
+        };
+        function verDetalle(reclamo) {
             if (!reclamo) return;
             if (chatTimer) clearInterval(chatTimer);
 
-            // --- LIMPIEZA FORZADA DE CAMPOS ---
-            // Esto asegura que no veas lo del ticket anterior mientras carga el nuevo
             $("#txtResolucion").val("");
             $("#txtDetalleProblema").val("");
             $("#chatBox").html("");
-
-           reclamoSeleccionado = reclamo;
+            reclamoSeleccionado = reclamo;
 
             $("#seccionDetalle").show();
             $("#detalleVacio").hide();
 
-            // Reset a la primera pestaña (Información)
-            const firstTab = new bootstrap.Tab(document.querySelector('#ticketTabs button[data-bs-target="#info"]'));
-            firstTab.show();
+            const id = reclamo.IdReclamo || reclamo.idReclamo;
+            const estado = reclamo.Estado || reclamo.estado;
 
-            const id = reclamo.idReclamo || reclamo.IdReclamo;
-            const estado = reclamo.estado || reclamo.Estado;
-           const idAsignado = reclamo.idUsuarioAsignado || reclamo.IdUsuarioAsignado;
-            const esStaff = (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3);
-
-            const formatearFecha = (f) => {
-                if (!f) return "N/A";
-                let d = new Date(f);
-                return isNaN(d) ? f : d.toLocaleString();
-            };
-
-            // Llenado de etiquetas (Usamos .text para labels y .val para textareas)
-           $("#lblIdReclamo").text(id);
-           $("#txtSolicitante").text(reclamo.usuarioSolicitador || reclamo.UsuarioSolicitador || "N/A");
-           // --- CORRECCIÓN DE INCIDENCIA ---
-           // Usamos el nombre exacto de la entidad C#
-           $("#txtIncidencia").text(reclamo.tipoIncidenciaReclamo || reclamo.TipoIncidenciaReclamo || "N/A");
-           $("#txtNrequisa").text(reclamo.nrequisa || reclamo.Nrequisa || "N/A");
-
-           // --- CORRECCIÓN DE FECHA REQUISA ---
-           $("#txtFechaRequisa").text(reclamo.fechaRequisa || reclamo.FechaRequisa || "N/A");
+            // Llenado de UI
+            $("#lblIdReclamo").text(id);
+            $("#txtSolicitante").text(reclamo.UsuarioSolicitador || reclamo.usuarioSolicitador || "N/A");
+            $("#txtIncidencia").text(reclamo.TipoIncidenciaReclamo || reclamo.tipoIncidenciaReclamo || "N/A");
+            $("#txtNrequisa").text(reclamo.Nrequisa || reclamo.nrequisa || "N/A");
+            $("#txtDetalleProblema").val(reclamo.Problema || reclamo.problema || "N/A");
+            $("#txtResolucion").val(reclamo.Resolucion || reclamo.resolucion || "");
+            $("#txtFechaRequisa").text(reclamo.fechaRequisa || reclamo.FechaRequisa || "N/A");
             $("#txtAsignado").text(reclamo.usuarioAsignado || reclamo.UsuarioAsignado || "N/A");
             $("#lblRegistro").text(formatearFecha(reclamo.registro || reclamo.Registro));
+
             $("#lblModif").text(formatearFecha(reclamo.modificacion || reclamo.Modificacion));
 
+
+
             // IMPORTANTE: Usar .val() para que el textarea se refresque correctamente
+
             $("#txtDetalleProblema").val(reclamo.problema || reclamo.Problema || "N/A");
+
             $("#txtResolucion").val(reclamo.resolucion || reclamo.Resolucion || "");
-
-            // Badge de estado
-            let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
-            $("#badgeEstado").text(estado).removeClass("bg-warning bg-info bg-success text-dark").addClass(colorClass);
-
+            // Bloqueo si está cerrado
+            if (estado === "Cerrado") {
+                $("#txtMensajeChat, #fArchivoChat, .btn-primary[onclick='enviarComentario()']").prop("disabled", true);
+                $("#txtMensajeChat").attr("placeholder", "Reclamo cerrado");
+            } else {
+                $("#txtMensajeChat, #fArchivoChat, .btn-primary[onclick='enviarComentario()']").prop("disabled", false);
+                $("#txtMensajeChat").attr("placeholder", "Escribe un comentario...");
+            }
             // Lógica de Seguridad para edición
             let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 1 || idAsignado === idUsuarioLogueado));
             if (puedeEditar) {
@@ -483,78 +525,70 @@
                 $("#btnGuardarReclamo").hide();
                 $("#txtResolucion, #txtDetalleProblema").prop("readonly", true).addClass("bg-light");
             }
-
-            // Carga de chat y adjuntos
             actualizarChatSilencioso();
             marcarComoLeido();
             cargarAdjuntos(id);
+            iniciarRefrescoChat();
         }
-        // --- 7. FUNCIONES DE CHAT ---
+
         function marcarComoLeido() {
             if (!reclamoSeleccionado) return;
             const id = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
             $(`#notif-${id}`).addClass("d-none");
+
             $.get('@Url.Action("ObtenerUltimoComentarioId", "ReclamosBodega")', { idReclamo: id }, function (res) {
-                ultimoIdComentarioVisto[id] = res.ultimoId;
+                if(res.ultimoId >= 0) {
+                    ultimoIdComentarioVisto[id] = res.ultimoId;
+                    localStorage.setItem(`visto_u${idUsuarioLogueado}_r${id}`, res.ultimoId);
+                }
             });
         }
 
         function iniciarRefrescoChat() {
-            if (chatTimer) clearInterval(chatTimer);
             chatTimer = setInterval(() => {
                 if ($("#chatTab").hasClass("active")) actualizarChatSilencioso();
             }, 3000);
         }
 
-
         function actualizarChatSilencioso() {
             if (!reclamoSeleccionado) return;
-            const idReclamo = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
+            const id = reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo;
 
-            $.get('@Url.Action("ObtenerComentarios", "ReclamosBodega")', { idReclamo: idReclamo }, function (data) {
+            $.get('@Url.Action("ObtenerComentarios", "ReclamosBodega")', { idReclamo: id }, function (data) {
+                if (data.length === ultimaCantidadComentarios) return;
+
                 let html = "";
                 data.forEach(c => {
-                    const claseMio = c.esMio ? "chat-right" : "chat-left";
-                    const ruta = c.rutaArchivo || c.RutaArchivo;
-                    const ext = (c.extension || c.Extension || "").toLowerCase();
+                    const esMio = c.esMio;
+                    const fotoUrl = (c.fotoPerfil) ? `/uploads/perfiles/${c.fotoPerfil}` : `/sbadmin2/img/undraw_profile.svg`;
 
-                    html += `<div class="chat-message ${claseMio}"><span class="chat-user">${c.nombreUsuario}</span><div>${c.mensaje || ""}</div>`;
-
-                    if (ruta) {
-                        // --- SI ES VIDEO: Mostramos un botón/icono para abrirlo ---
-                        if (ext.match(/(mp4|webm|ogg)$/i)) {
-                            html += `
-                                <div class="mt-2">
-                                    <a href="${ruta}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm d-inline-flex align-items-center">
-                                        <i class="fas fa-play-circle fa-2x me-2"></i>
-                                        <div class="text-start">
-                                            <small class="d-block fw-bold">Ver Video</small>
-                                            <span style="font-size: 0.65rem;">Haga clic para reproducir</span>
-                                        </div>
-                                    </a>
-                                </div>`;
-                        }
-                        // --- SI ES IMAGEN: Mantenemos la miniatura ---
-                        else if (ext.match(/(jpg|jpeg|png|gif)$/i)) {
-                            html += `<a href="${ruta}" target="_blank"><img src="${ruta}" class="img-fluid rounded mt-2 border" style="max-height:150px"></a>`;
-                        }
-                        // --- OTROS ARCHIVOS ---
-                        else {
-                            html += `<div class="mt-2"><a href="${ruta}" target="_blank" class="btn btn-sm btn-light border small"><i class="fas fa-file"></i> Ver Adjunto</a></div>`;
-                        }
-                    }
-                    html += `<span class="chat-time">${c.fecha}</span></div>`;
+                    html += `
+                        <div class="d-flex ${esMio ? 'flex-row-reverse' : ''} mb-3">
+                            <img src="${fotoUrl}" class="rounded-circle border" style="width: 38px; height: 38px; object-fit: cover;">
+                            <div class="chat-message ${esMio ? 'chat-right' : 'chat-left'} ml-2 mr-2" style="max-width: 80%;">
+                                <span class="chat-user">${c.nombreUsuario}</span>
+                                <div class="chat-text">${c.mensaje || ""}</div>
+                                ${c.rutaArchivo ? `<div class="mt-2"><a href="${c.rutaArchivo}" target="_blank" class="btn btn-sm btn-light border">Ver Adjunto</a></div>` : ''}
+                                <span class="chat-time">${c.fecha}</span>
+                            </div>
+                        </div>`;
                 });
 
-                if ($("#chatBox").html().length !== html.length) {
-                    $("#chatBox").html(html).scrollTop($("#chatBox")[0].scrollHeight);
-                    marcarComoLeido();
+                $("#chatBox").html(html || '<div class="text-center text-muted small mt-4">No hay mensajes.</div>');
+                if (data.length > ultimaCantidadComentarios) {
+                    $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
                 }
+                ultimaCantidadComentarios = data.length;
+                marcarComoLeido();
             });
         }
 
         function cargarComentarios() {
             if (!reclamoSeleccionado) return;
+
+            // Al cargar un ticket nuevo, reseteamos el conteo para que el chat se dibuje sí o sí
+            ultimaCantidadComentarios = 0;
+
             $("#chatBox").html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
             actualizarChatSilencioso();
         }
@@ -582,6 +616,7 @@
                         $("#txtMensajeChat").val("");
                         limpiarArchivoChat();
                         actualizarChatSilencioso();
+                        marcarComoLeido(); // <--- Agrega esto aquí
                     } else {
                         Swal.fire('Error', res.mensaje || 'No se pudo enviar', 'error');
                     }
@@ -593,61 +628,53 @@
             });
         }
 
-        function monitorearMensajesNuevos() {
-            $(".btn-ver").each(function() {
-                let id = $(this).data("info").IdReclamo || $(this).data("info").idReclamo;
-
-                $.get('@Url.Action("ObtenerEstadoChat", "ReclamosBodega")', { idReclamo: id }, function (res) {
-                    // Actualizamos el ID global por si hay cambios
-                    ultimoIdComentarioVisto[id] = res.ultimoId;
-
-                    // Si el último no soy yo, evaluar si mostrar badge
-                    if (res.ultimoId > 0 && res.idAutor !== idUsuarioLogueado) {
-                        const reclamoAbiertoId = reclamoSeleccionado?.IdReclamo || reclamoSeleccionado?.idReclamo;
-
-                        // Si no es el ticket que tengo abierto O si tengo abierta la pestaña de Info y no la de Chat
-                        if (reclamoAbiertoId != id || !$("#chatTab").hasClass("active")) {
-                            $(`#notif-${id}`).removeClass("d-none");
-                        }
-                    } else {
-                        // Si yo respondí o no hay mensajes, desaparece
-                        $(`#notif-${id}`).addClass("d-none");
-                    }
-                });
-            });
-        }
 
         // --- 9. OTRAS UTILIDADES ---
+
         function seleccionarArchivoChat(input) {
             if (input.files.length > 0) {
                 const file = input.files[0];
-
-                // Mostramos el nombre del archivo
                 $("#lblNombreArchivoChat").text(file.name);
                 $("#divPreviewChat").show();
 
-                // Si es una imagen, generamos una miniatura rápida
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = function (e) {
-                        // Creamos o actualizamos un elemento <img> para la vista previa
-                        if ($("#imgMiniaturaChat").length === 0) {
-                            $("#divPreviewChat").prepend('<img id="imgMiniaturaChat" src="" style="max-height: 50px; margin-right: 10px; border-radius: 5px; border: 1px solid #ddd;">');
+                        // Diseño exacto: Contenedor con botón X rojo
+                        let previewHtml = `
+                    <div id="containerMiniaturaChat" style="position: relative; display: inline-block; margin-bottom: 8px;">
+                        <img id="imgMiniaturaChat" src="${e.target.result}"
+                             style="max-height: 60px; border-radius: 5px; border: 2px solid #3b82f6; display: block;">
+                        <span onclick="limpiarArchivoChat()"
+                              style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white;
+                                     border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center;
+                                     justify-content: center; font-size: 11px; cursor: pointer; border: 2px solid white; z-index: 10;">
+                            <i class="fas fa-times"></i>
+                        </span>
+                    </div>`;
+
+                        if ($("#containerMiniaturaChat").length > 0) {
+                            $("#containerMiniaturaChat").replaceWith(previewHtml);
+                        } else {
+                            $("#divPreviewChat").prepend(previewHtml);
                         }
-                        $("#imgMiniaturaChat").attr("src", e.target.result).show();
                     };
                     reader.readAsDataURL(file);
                 } else {
-                    // Si no es imagen (ej. un PDF), escondemos la miniatura si existía
-                    $("#imgMiniaturaChat").hide();
+                    // Si no es imagen, solo quitamos la miniatura previa pero mostramos el nombre
+                    $("#containerMiniaturaChat").remove();
                 }
             }
         }
+
         function limpiarArchivoChat() {
-            $("#fArchivoChat").val("");
-            $("#divPreviewChat").hide();
+            $("#fArchivoChat").val("");           // Limpia el input
+            $("#containerMiniaturaChat").remove(); // Quita la foto con la X
+            $("#divPreviewChat").hide();          // Esconde el contenedor
+            $("#lblNombreArchivoChat").text("");  // Limpia el nombre del archivo
             $("#imgMiniaturaChat").hide(); // Limpiamos la miniatura
         }
+
         function cargarAdjuntos(id) {
             $.get('@Url.Action("ObtenerAdjuntos", "ReclamosBodega")', { idReclamo: id }, function(data) {
                 let html = data.map(x => `<a href="${x.ruta}" target="_blank" class="list-group-item list-group-item-action small">${x.nombreOriginal}</a>`).join('');
@@ -656,7 +683,7 @@
         }
 
         function abrirModalNuevo() { $("#modalNuevoReclamo").modal("show"); }
-     
+
         function crearReclamo() {
             // Validar que el problema no esté vacío antes de enviar
             if ($("#nuevoProblema").val().trim() === "") {
@@ -731,6 +758,9 @@
                             if (response.success) {
                                 Swal.fire('Éxito', 'reclamo actualizado', 'success').then(() => {
                                     refrescarTablaReclamos();
+                                    if (nuevoEstadoId === 4) {
+                                        bloquearChatVisualmente();
+                                    }
                                     // PASO CLAVE: Pasamos el objeto con el NUEVO estado para que verDetalle lo oculte
                                     verDetalle(reclamoData);
                                 });
@@ -806,6 +836,17 @@
                 }
             }
         });
+        function bloquearChatVisualmente() {
+            $("#txtMensajeChat").prop("disabled", true)
+                .val("")
+                .attr("placeholder", "Caso cerrado - No se admiten más mensajes");
+            $(".btn-primary[onclick='enviarComentario()']").prop("disabled", true);
+            $("#fArchivoChat").prop("disabled", true);
+            $(".fa-paper-plane").closest("button").addClass("btn-secondary").removeClass("bg-primary");
+
+            // Opcional: Ocultar el botón de guardar si ya está cerrado
+            $("#btnGuardarReclamo").hide();
+        }
     </script>
 }
 

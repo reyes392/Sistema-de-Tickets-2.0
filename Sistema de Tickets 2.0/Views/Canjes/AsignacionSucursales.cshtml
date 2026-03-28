@@ -1,0 +1,242 @@
+﻿@model List<Capa_Entidad.Canjes.E_AsignacionCanjes>
+@using Capa_Entidad.Canjes
+@{
+    ViewData["Title"] = "AsignacionSucursales";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
+        <h6 class="m-0 font-weight-bold">Configuración de Asignaciones (Técnico - Solicitante)</h6>
+        <button class="btn btn-light btn-sm" onclick="abrirModal()">
+            <i class="fas fa-plus"></i> Nueva Asignación
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="tblAsignaciones" width="100%" cellspacing="0">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Técnico (Atiende)</th>
+                        <th>Solicitante (Origen)</th>
+                        <th>Fecha Asignación</th>
+                        <th style="width: 50px">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAsignacion" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Configurar Nueva Relación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAsignacion">
+                    <div class="mb-4">
+                        <label class="form-label font-weight-bold">1. Seleccione Técnico Encargado:</label>
+                        <select class="form-select select2" id="cboTecnico" required style="width:100%">
+                            <option value="">-- Seleccione Técnico --</option>
+                            @foreach (var item in ViewBag.Operador)
+                            {
+                                <option value="@item.IdUsuario">@item.Nombres @item.Apellidos</option>
+                            }
+                        </select>
+                    </div>
+                    <hr />
+                    <div class="mb-2">
+                        <label class="form-label font-weight-bold mb-0">2. Marque los Usuarios Solicitantes:</label>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered table-hover w-100" id="tblSolicitantesModal">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 40px" class="text-center">
+                                        <input type="checkbox" id="checkAll" class="form-check-input">
+                                    </th>
+                                    <th>Nombre del Usuario Solicitante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in ViewBag.Solicitantes)
+                                {
+                                    <tr>
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input chk-solicitante" value="@item.IdUsuario">
+                                        </td>
+                                        <td>@item.Nombres @item.Apellidos</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 text-end">
+                        <small class="text-primary fw-bold" id="countSelected">0 usuarios seleccionados</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarAsignacion()">Guardar Relación</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+       let tablaSolicitantes;
+
+        $(document).ready(function () {
+            $('#tblAsignaciones').DataTable({
+
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+
+                language: {
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    zeroRecords: "No se encontraron datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "No hay registros",
+                    infoFiltered: "(filtrado de _MAX_ registros)",
+                    search: "Buscar:",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                }
+
+            });
+            listarAsignaciones();
+
+            // Inicializar tabla del modal SIN paginación
+            tablaSolicitantes = $('#tblSolicitantesModal').DataTable({
+                "paging": false,          // <-- AQUÍ QUITAMOS LA PAGINACIÓN
+                "scrollY": "400px",       // Añadimos scroll vertical para que el modal no se deforme
+                "scrollCollapse": true,
+                "info": true,             // Muestra el total de registros
+                "language": {
+                    "url": "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+                },
+                "columnDefs": [{ "orderable": false, "targets": 0 }]
+            });
+        });
+
+        // Corregir visualización al abrir modal
+        $('#modalAsignacion').on('shown.bs.modal', function () {
+            $('#cboTecnico').select2({
+                dropdownParent: $('#modalAsignacion'),
+                width: '100%'
+            });
+            // Importante para ajustar el scroll cuando se quita la paginación
+            tablaSolicitantes.columns.adjust().draw();
+        });
+
+        // Evento Seleccionar Todos
+        $(document).on("change", "#checkAll", function() {
+            $(".chk-solicitante").prop('checked', $(this).is(':checked'));
+            actualizarContador();
+        });
+
+        // Evento Checkboxes individuales
+        $(document).on("change", ".chk-solicitante", function() {
+            actualizarContador();
+        });
+
+        function actualizarContador() {
+            // Al no haber paginación, un selector normal de jQuery funciona perfectamente
+            const cant = $(".chk-solicitante:checked").length;
+            $("#countSelected").text(cant + " usuarios seleccionados");
+        }
+
+        function limpiarTodo() {
+            $("#formAsignacion")[0].reset();
+            $("#cboTecnico").val(null).trigger('change');
+            $(".chk-solicitante").prop('checked', false);
+            $("#checkAll").prop('checked', false);
+            actualizarContador();
+        }
+
+        function guardarAsignacion() {
+            const idTecnico = $("#cboTecnico").val();
+            const solicitantesIds = [];
+
+            // Capturamos los IDs marcados
+            $(".chk-solicitante:checked").each(function() {
+                solicitantesIds.push(parseInt($(this).val()));
+            });
+
+            if (!idTecnico || solicitantesIds.length === 0) {
+                Swal.fire('Atención', 'Seleccione un técnico y al menos un solicitante.', 'warning');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GuardarMultiple", "Canjes")',
+                type: "POST",
+                data: {
+                    idTecnico: idTecnico,
+                    idsSolicitantes: solicitantesIds
+                },
+                traditional: true,
+                success: function (res) {
+                    if (res.success) {
+                        $("#modalAsignacion").modal("hide");
+                        Swal.fire('Éxito', res.mensaje, 'success');
+                        listarAsignaciones();
+                    } else {
+                        Swal.fire('Error', res.mensaje, 'error');
+                    }
+                }
+            });
+        }
+        function listarAsignaciones() {
+            $.get('@Url.Action("Listar", "Canjes")', function (data) {
+                let html = "";
+                data.forEach(item => {
+                    html += `<tr>
+                        <td><i class="fas fa-user-tie me-2 text-primary"></i>${item.nombreUsuarioCanjes}</td>
+                        <td><i class="fas fa-user me-2 text-info"></i>${item.nombreUsuarioSolicitante}</td>
+                        <td>${new Date(item.fechaAsignacion).toLocaleString()}</td>
+                        <td class="text-center">
+                            <button class="btn btn-danger btn-sm" onclick="eliminar(${item.idAsignacion})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                $("#tblAsignaciones tbody").html(html || '<tr><td colspan="4" class="text-center">No hay asignaciones</td></tr>');
+            });
+        }
+
+        function abrirModal() {
+            limpiarTodo();
+            $("#modalAsignacion").modal("show");
+        }
+
+        // Función eliminar (si no la tienes)
+        function eliminar(id) {
+            Swal.fire({
+                title: '¿Eliminar asignación?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("Eliminar", "Canjes")', { id: id }, function(res) {
+                        if(res.success) { listarAsignaciones(); Swal.fire('Eliminado', '', 'success'); }
+                    });
+                }
+            });
+        }
+    </script>
+}

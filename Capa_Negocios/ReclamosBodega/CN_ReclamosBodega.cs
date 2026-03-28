@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ChatEstadoDTO = Capa_Entidad.ReclamosBodega.ChatEstadoDTO;
 
 namespace Capa_Negocios.ReclamosBodega
 {
@@ -97,10 +98,10 @@ namespace Capa_Negocios.ReclamosBodega
 
             return nombreUnico;
         }
-        public Capa_Entidad.ReclamosBodega.ChatEstadoDTO ObtenerEstadoChat(int idReclamo)
+   
+        public List<ChatEstadoDTO> ObtenerEstadosChatsReclamos(List<int> idsReclamos)
         {
-            return _dao.ObtenerEstadoUltimoMensaje(idTicket: idReclamo);
+            return _dao.ObtenerEstadosUltimosMensajesReclamos(idsReclamos);
         }
-
     }
 }

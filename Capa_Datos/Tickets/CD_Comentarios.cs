@@ -44,7 +44,7 @@ namespace Capa_Datos.Tickets
             {
                 // Hacemos JOIN con USUARIOS para obtener el nombre del emisor
                 string query = @"SELECT C.ID_COMENTARIO, C.ID_TICKET, C.ID_USUARIO, U.NOMBRES+ ' '+u.APELLIDOS AS NOMBRE_USUARIO,
-                                        C.MENSAJE, C.NOMBRE_ARCHIVO, C.RUTA_ARCHIVO, C.EXTENSION, C.FECHA_REGISTRO 
+                                        C.MENSAJE, C.NOMBRE_ARCHIVO, C.RUTA_ARCHIVO, C.EXTENSION, C.FECHA_REGISTRO ,U.FOTO_PERFIL
                                  FROM TICKETS_COMENTARIOS C
                                  INNER JOIN USUARIOS U ON C.ID_USUARIO = U.ID_USUARIO
                                  WHERE C.ID_TICKET = @id 
@@ -68,7 +68,8 @@ namespace Capa_Datos.Tickets
                             NombreArchivo = dr["NOMBRE_ARCHIVO"].ToString(),
                             RutaArchivo = dr["RUTA_ARCHIVO"].ToString(),
                             Extension = dr["EXTENSION"].ToString(),
-                            FechaRegistro = Convert.ToDateTime(dr["FECHA_REGISTRO"])
+                            FechaRegistro = Convert.ToDateTime(dr["FECHA_REGISTRO"]),
+                            FotoPerfil = dr["FOTO_PERFIL"] == DBNull.Value ? "" : dr["FOTO_PERFIL"].ToString()
                         });
                     }
                 }

@@ -1,0 +1,103 @@
+﻿@model Capa_Entidad.Tickets.E_Usuarios
+
+@{
+    ViewData["Title"] = "Mi Perfil";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Lógica para determinar la ruta de la foto
+    var foto = string.IsNullOrEmpty(Model.FotoPerfil)
+               ? Url.Content("~/sbadmin2/img/undraw_profile.svg")
+               : Url.Content("~/uploads/perfiles/" + Model.FotoPerfil);
+}
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+
+            @if (TempData["S_Mensaje"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                    <i class="fas fa-check-circle mr-2"></i> @TempData["S_Mensaje"]
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            }
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        @Model.Nombres @Model.Apellidos
+                    </h6>
+                    <a asp-controller="Home" asp-action="Index" class="close" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </a>
+                </div>
+
+                <div class="card-body text-center">
+
+                    <div class="mb-4">
+                        <img id="imgPrevisualizacion"
+                             class="img-profile rounded-circle shadow"
+                             src="@foto"
+                             style="width: 180px; height: 180px; object-fit: cover; border: 4px solid #f8f9fc;">
+                    </div>
+
+                    <h4 class="font-weight-bold text-gray-800">@Model.Nombres @Model.Apellidos</h4>
+                    <p class="text-primary mb-1"><i class="fas fa-id-badge mr-1"></i> @Model.Rol</p>
+                    <p class="text-muted small"><i class="fas fa-envelope mr-1"></i> @Model.Correo</p>
+
+                    <hr class="my-4">
+
+                    <form asp-controller="Perfil" asp-action="ActualizarFotoPerfil" method="post" enctype="multipart/form-data">
+                        <div class="form-group text-left">
+                            <label class="small font-weight-bold text-dark">Cambiar foto de perfil:</label>
+                            <div class="custom-file">
+                                <input type="file" name="fotoArchivo" class="custom-file-input" id="inputFoto" accept="image/*" required>
+                                <label class="custom-file-label" for="inputFoto">Elegir imagen...</label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6">
+                                <a asp-controller="Home" asp-action="Index" class="btn btn-secondary btn-block">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-save"></i> Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Lógica de previsualización de imagen
+        document.getElementById("inputFoto").onchange = function (evt) {
+            const [file] = this.files;
+            if (file) {
+                const fileType = file["type"];
+                const validImageTypes = ["image/gif", "image/jpeg", "image/png"];
+
+                if (validImageTypes.includes(fileType)) {
+                    document.getElementById("imgPrevisualizacion").src = URL.createObjectURL(file);
+
+                    let fileName = this.value.split('\\').pop();
+                    this.nextElementSibling.classList.add("selected");
+                    this.nextElementSibling.innerHTML = fileName;
+                } else {
+                    alert("Por favor, selecciona un formato de imagen válido (JPG, PNG, GIF).");
+                    this.value = "";
+                }
+            }
+        }
+    </script>
+}

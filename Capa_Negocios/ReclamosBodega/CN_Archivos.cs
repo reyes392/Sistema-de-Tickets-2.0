@@ -32,6 +32,6 @@ namespace Capa_Negocios.ReclamosBodega
 
         public bool RegistrarEnBaseDatos(E_Archivos obj) => _daoArchivos.Registrar(obj);
 
-        public List<E_Archivos> Listar(int idTicket) => _daoArchivos.ListarPorTicket(idTicket);
+        public List<E_Archivos> Listar(int idReclamo) => _daoArchivos.ListarPorTicket(idReclamo);
     }
 }

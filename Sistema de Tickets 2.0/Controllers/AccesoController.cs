@@ -32,6 +32,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
                 HttpContext.Session.SetInt32("IdRol", usuarioObj.IdRol); // IMPORTANTE: Guardar el Rol
                 HttpContext.Session.SetString("Usuario", usuarioObj.UserName);
                 HttpContext.Session.SetString("NombreUsuario", usuarioObj.Nombres + " " + usuarioObj.Apellidos);
+                HttpContext.Session.SetString("FotoPerfil", usuarioObj.FotoPerfil ?? "");
 
                 var permisos = _accesoNegocio.ObtenerPermisos(usuarioObj.IdUsuario);
 

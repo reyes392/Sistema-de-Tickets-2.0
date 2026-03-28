@@ -1,0 +1,841 @@
+﻿@model List<Capa_Entidad.Auditoria_Z.E_AuditoriaZ>
+@using Capa_Entidad.Auditoria_Z
+@{
+    ViewData["Title"] = "AuditoriaZ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@*<style>
+        /* Estilos para el Chat */
+        #chatBox {
+            height: 350px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            gap: 12px;
+        }
+
+        .chat-message {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 10px;
+            position: relative;
+            font-size: 0.9rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .chat-left {
+            align-self: flex-start;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            color: #333;
+        }
+
+        .chat-right {
+            align-self: flex-end;
+            background-color: #198754;
+            color: white;
+        }
+        /* Verde para Auditoría */
+        .chat-time {
+            font-size: 0.65rem;
+            display: block;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .chat-user {
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .notif-badge {
+            font-size: 0.6rem;
+            padding: 4px 6px;
+            margin-left: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @@keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>*@
+
+<style>
+    /* Estilos para el Chat */
+    #chatBox {
+        height: 350px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        gap: 12px;
+    }
+
+    .chat-message {
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        position: relative;
+        font-size: 0.9rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .chat-left {
+        align-self: flex-start;
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        color: #333;
+    }
+
+    .chat-right {
+        align-self: flex-end;
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    .chat-time {
+        font-size: 0.65rem;
+        display: block;
+        margin-top: 4px;
+        opacity: 0.7;
+    }
+
+    .chat-user {
+        font-size: 0.7rem;
+        font-weight: bold;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .notif-badge {
+        font-size: 0.6rem;
+        padding: 4px 6px;
+        margin-left: 5px;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+<div class="container-fluid mt-3">
+    <div class="row">
+        @* --- LISTADO DE AUDITORIAS --- *@
+        <div class="col-md-6 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><i class="fas fa-clipboard-check"></i> Auditoría Z</h2>
+                <button class="btn btn-primary shadow-sm" onclick="abrirModalNuevo()">
+                    <i class="fas fa-plus-circle"></i> Nueva Auditoría
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover shadow-sm border" id="tblAuditorias">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Solicitante</th>
+                            <th>Incidencia</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            <tr id="row-@t.IdAuditoriaZ">
+                                <td>
+                                    <span class="fw-bold">@t.IdAuditoriaZ</span>
+                                    <span id="notif-@t.IdAuditoriaZ" class="badge rounded-pill bg-danger d-none notif-badge">
+                                        <i class="fas fa-comment"></i>
+                                    </span>
+                                </td>
+                                <td>@t.NombreSolicitador</td>
+                                <td>@t.TipoIncidenciaAuditoria</td>
+                                <td>@t.FechaRegistro.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <span class="badge @(t.Estado == "Pendiente" ? "bg-warning text-dark" : (t.Estado == "Cerrado" ? "bg-success" : "bg-info"))">
+                                        @t.Estado
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary btn-ver" data-info='@Json.Serialize(t)'>
+                                        <i class="fas fa-eye"></i> Ver
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* --- DETALLE DE AUDITORIA --- *@
+        <div class="col-md-6 bg-light p-4" id="seccionDetalle" style="display:none; min-height: 85vh;">
+            <ul class="nav nav-tabs" id="auditTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                        <i class="fas fa-info-circle"></i> Detalle
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold" id="tabChat" data-bs-toggle="tab" data-bs-target="#chatTab" type="button" onclick="marcarComoLeido(); cargarComentarios(); iniciarRefrescoChat();">
+                        <i class="fas fa-comments"></i> Chat
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#adjuntosTab" type="button">
+                        <i class="fas fa-paperclip"></i> Adjuntos
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content border border-top-0 p-4 bg-white shadow-sm">
+                <div class="tab-pane fade show active" id="info">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="text-success m-0">Auditoría #<span id="lblIdAuditoria"></span></h5>
+                        <span id="badgeEstado" class="badge p-2"></span>
+                    </div>
+
+                    <div class="row g-2 mb-4 border-bottom pb-3">
+                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Registro:</strong> <span id="lblRegistro" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Modificacion:</strong> <span id="lblModificacion" class="d-block text-muted"></span></div>
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="fw-bold small">Observaciones Iniciales:</label>
+                        <textarea id="txtDetalleProblema" class="form-control bg-light" rows="3" readonly></textarea>
+                    </div>
+
+                    @* Campo para que el Auditor Z ponga su resolución *@
+                    <div class="mb-3">
+                        <label class="fw-bold small text-success">Resolución de Auditoría:</label>
+                        <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
+                    </div>
+
+                    <div id="contenedorBotonGuardar">
+                        <button id="btnGuardarAuditoria" class="btn btn-success w-100" onclick="guardarCambiosAuditoria()">
+                            <i class="fas fa-save"></i> Guardar Resolución
+                        </button>
+                    </div>
+                </div>
+
+                @* Pestaña Chat *@
+    
+                <div class="tab-pane fade" id="chatTab">
+                    <div id="chatBox"></div>
+
+                    <div id="divPreviewChat" class="mt-2 p-2 border rounded bg-light" style="display:none; position: relative;">
+                        <span id="lblNombreArchivoChat" class="small text-muted d-block mb-1"></span>
+                    </div>
+
+                    <div class="input-group mt-2">
+                        <input type="file" id="fArchivoChat" style="display:none" onchange="seleccionarArchivoChat(this)" accept="image/*,video/*,.pdf,.doc,.docx" />
+                        <button class="btn btn-outline-secondary" type="button" onclick="$('#fArchivoChat').click()">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <input type="text" id="txtMensajeChat" class="form-control" placeholder="Escribe un mensaje o pega una imagen..." onkeypress="if(event.keyCode==13) enviarComentario()">
+                        <button class="btn btn-primary" type="button" onclick="enviarComentario()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                @* Pestaña Adjuntos *@
+                <div class="tab-pane fade" id="adjuntosTab">
+                    <h6 class="fw-bold mb-3">Evidencias Iniciales:</h6>
+                    <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+                </div>
+            </div>
+        </div>
+
+        @* Detalle Vacío *@
+        <div class="col-md-6 d-flex align-items-center justify-content-center bg-light border" id="detalleVacio" style="min-height: 85vh;">
+            <div class="text-center text-muted">
+                <i class="fas fa-clipboard fa-3x mb-3"></i>
+                <p>Selecciona una auditoría para ver los detalles</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* --- MODAL NUEVA AUDITORIA --- *@
+<div class="modal fade" id="modalNuevo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle"></i> Nueva Auditoría Z</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">TIPO DE INCIDENCIA</label>
+                    <select id="cboIncidencia" class="form-select">
+                        @foreach (var item in ViewBag.Incidencias)
+                        {
+                            <option value="@item.IdTiposIncidenciasAuditoriaZ">@item.Descripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">OBSERVACIONES / DETALLES</label>
+                    <textarea id="txtNuevoProblema" class="form-control" rows="3" placeholder="Describa el hallazgo..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-success"><i class="fas fa-paperclip"></i> ADJUNTAR EVIDENCIA</label>
+                    <input type="file" id="fArchivos" class="form-control" multiple />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="crearAuditoria()">Crear Registro</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        let ultimaCantidadComentarios = 0;
+        // --- 1. VARIABLES GLOBALES Y ESTADO ---
+        let auditoriaSeleccionada = null;
+        let chatTimer = null;
+        let tituloOriginal = document.title;
+        let intervaloPestaña = null;
+        let ultimoIdComentarioVisto = {};
+        let versionAuditoriaActual = "";
+
+        const idUsuarioLogueado = parseInt('@ViewBag.IdUsuarioLogueado') || 0;
+        const nombreUsuarioLogueado = '@ViewBag.NombreUsuarioLogueado';
+        const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
+        // --- FUNCIONES GLOBALES ---
+        window.verImagenFull = function (url) {
+            if (url) {
+                window.open(url, '_blank');
+            }
+        };
+
+        function limpiarArchivoChat() {
+            $("#fArchivoChat").val("");
+            $("#containerMiniaturaChat").remove();
+            $("#divPreviewChat").hide();
+            $("#lblNombreArchivoChat").text("");
+        }
+
+        function seleccionarArchivoChat(input) {
+            if (input.files.length > 0) {
+                const file = input.files[0];
+                // Si tienes un label para el nombre, lo usamos
+                if ($("#lblNombreArchivoChat").length) $("#lblNombreArchivoChat").text(file.name);
+                $("#divPreviewChat").show();
+
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        let previewHtml = `
+                    <div id="containerMiniaturaChat" style="position: relative; display: inline-block; margin-bottom: 8px;">
+                        <img id="imgMiniaturaChat" src="${e.target.result}"
+                             style="max-height: 60px; border-radius: 5px; border: 2px solid #3b82f6; display: block;">
+                        <span onclick="limpiarArchivoChat()"
+                              style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white;
+                                     border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center;
+                                     justify-content: center; font-size: 11px; cursor: pointer; border: 2px solid white; z-index: 10;">
+                            <i class="fas fa-times"></i>
+                        </span>
+                    </div>`;
+
+                        if ($("#containerMiniaturaChat").length > 0) {
+                            $("#containerMiniaturaChat").replaceWith(previewHtml);
+                        } else {
+                            $("#divPreviewChat").prepend(previewHtml);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    $("#containerMiniaturaChat").remove();
+                }
+            }
+        }
+      
+
+        // --- 3. INICIALIZACIÓN ---
+        $(document).ready(function () {
+            $('#tblAuditorias').DataTable({
+                pageLength: 10,
+                order: [],
+                language: { url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+            });
+
+            // Cargar versión inicial y disparar monitores
+            $.get('@Url.Action("ObtenerVersionAuditoria", "AuditoriaZ")', v => versionAuditoriaActual = v);
+            // Detectar cuando el usuario cambia a la pestaña de Chat
+
+            // Verificación inicial de notificaciones
+
+
+            $('button[data-bs-target="#chat"]').on('shown.bs.tab', function (e) {
+                marcarComoLeido();
+            });
+            monitorearMensajesNuevos();
+
+            // Intervalos
+            setInterval(verificarCambiosAuditoria, 30000);
+            setInterval(monitorearMensajesNuevos, 6000);
+        });
+
+            function verificarCambiosAuditoria() {
+            $.get('@Url.Action("ObtenerVersionAuditoria", "AuditoriaZ")', function (nuevaVersion) {
+                if (versionAuditoriaActual !== "" && nuevaVersion !== versionAuditoriaActual) {
+                    versionAuditoriaActual = nuevaVersion;
+                    refrescarTablaAuditorias();
+                    if (!intervaloPestaña) {
+                        intervaloPestaña = setInterval(() => {
+                            document.title = (document.title === tituloOriginal) ? "✨ ACTUALIZACIÓN Z ✨" : tituloOriginal;
+                        }, 1000);
+                    }
+                }
+            });
+        }
+
+  
+
+        // --- 4. MODIFICAR REFRESCO DE TABLA ---
+        function refrescarTablaAuditorias() {
+            $.get(window.location.href, function (data) {
+                const nuevoContenido = $(data).find("#tblAuditorias tbody").html();
+                if (nuevoContenido) {
+                    $("#tblAuditorias tbody").html(nuevoContenido);
+                    // Ejecutar monitoreo inmediatamente para aplicar badges según localStorage
+                    monitorearMensajesNuevos();
+                }
+            });
+        }
+        // --- 5. EVENTO VER DETALLE (CON AUTO-PROCESO) ---
+        $(document).on("click", ".btn-ver", function () {
+            let $btn = $(this);
+            let info = $btn.data("info");
+            const id = info.IdAuditoriaZ || info.idAuditoriaZ;
+            const estado = info.Estado || info.estado;
+            const idAsignado = info.IdUsuarioAsignado || info.idUsuarioAsignado;
+
+            if (intervaloPestaña) {
+                clearInterval(intervaloPestaña);
+                intervaloPestaña = null;
+                document.title = tituloOriginal;
+            }
+
+            // LÓGICA DE AUTO-PROCESO: Si está Pendiente y soy Auditor (Rol 8) o Admin (Rol 1)
+            if (estado === "Pendiente" && (rolUsuarioLogueado === 8 || rolUsuarioLogueado === 1)) {
+                $.post('@Url.Action("TomarAuditoria", "AuditoriaZ")', { idAuditoriaZ: id }, function (res) {
+                    if (res.success) {
+                        // Actualizamos el objeto local para que verDetalle muestre "En Proceso"
+                        info.IdEstado = 2; // Asumiendo 2 para En Proceso
+                        info.Estado = "En Proceso";
+                        info.NombreAsignado = nombreUsuarioLogueado;
+                        $btn.data("info", info);
+                        // Cambiamos el badge en la tabla inmediatamente
+                        $btn.closest("tr").find(".badge").first().text("En Proceso").attr("class", "badge bg-info");
+                    }
+                    verDetalle(info);
+                });
+            } else {
+                verDetalle(info);
+            }
+        });
+
+        const formatearFecha = (f) => {
+            if (!f) return "N/A";
+            let d = new Date(f);
+            if (isNaN(d.getTime()) || d.getFullYear() <= 1900) return "N/A";
+            return d.toLocaleString('es-ES', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        };
+
+        function verDetalle(audit) {
+            if (!audit) return;
+            if (chatTimer) clearInterval(chatTimer);
+
+            $("#txtResolucion").val("");
+            $("#chatBox").html("");
+
+            auditoriaSeleccionada = audit;
+            $("#seccionDetalle").show();
+            $("#detalleVacio").hide();
+
+            const id = audit.IdAuditoriaZ || audit.idAuditoriaZ;
+            const estado = audit.Estado || audit.estado;
+
+            $("#lblIdAuditoria").text(id);
+            $("#txtSolicitante").text(audit.NombreSolicitador || audit.nombreSolicitador || "N/A");
+            $("#txtIncidencia").text(audit.TipoIncidenciaAuditoria || audit.tipoIncidenciaAuditoria || "N/A");
+            const nombreAsignado = audit.NombreAsignado || audit.nombreAsignado || "Asignado a Ti";
+            $("#txtAsignado").text(nombreAsignado);
+
+            $("#lblRegistro").text(formatearFecha(audit.fechaRegistro || audit.FechaRegistro));
+            $("#lblModificacion").text(formatearFecha(audit.fechaModificacion || audit.FechaModificacion));
+
+            $("#txtDetalleProblema").val(audit.DescripcionProblema || audit.descripcionProblema || "");
+            $("#txtResolucion").val(audit.ResolucionProblema || audit.resolucionProblema || "");
+
+            let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
+            $("#badgeEstado").text(estado).removeClass("bg-warning bg-info bg-success text-dark").addClass(colorClass);
+            // --- LÓGICA PARA DESHABILITAR CHAT SI EL TICKET ESTÁ CERRADO ---
+            if (estado === "Cerrado") {
+                bloquearChatVisualmente();
+                $(".btn-primary[onclick='enviarComentario()']").prop("disabled", true);
+                $("#fArchivoChat").prop("disabled", true); // También deshabilitamos el input de archivos
+                $(".fa-paper-plane").closest("button").addClass("btn-secondary").removeClass("bg-primary"); // Cambio visual opcional
+            } else {
+                $("#txtMensajeChat").prop("disabled", false).attr("placeholder", "Escribe un comentario...");
+                $(".btn-primary[onclick='enviarComentario()']").prop("disabled", false);
+                $("#fArchivoChat").prop("disabled", false);
+                $(".fa-paper-plane").closest("button").addClass("btn-primary").removeClass("btn-secondary");
+            }
+            // Permisos de edición
+            if (estado !== "Cerrado" && (rolUsuarioLogueado === 8 || rolUsuarioLogueado === 1)) {
+                $("#contenedorBotonGuardar").show();
+                $("#txtResolucion").prop("readonly", false).removeClass("bg-light");
+            } else {
+                $("#contenedorBotonGuardar").hide();
+                $("#txtResolucion").prop("readonly", true).addClass("bg-light");
+            }
+            ultimaCantidadComentarios = 0;
+            actualizarChatSilencioso();
+            marcarComoLeido();
+            cargarAdjuntos(id);
+            iniciarRefrescoChat();
+        }
+
+        // --- 6. FUNCIONES DE CHAT ---
+        // --- FUNCIONES DE CHAT PARA AUDITORÍA Z CORREGIDAS ---
+
+        function actualizarChatSilencioso() {
+            if (!auditoriaSeleccionada) return;
+            const id = auditoriaSeleccionada.IdAuditoriaZ || auditoriaSeleccionada.idAuditoriaZ;
+
+            $.get('@Url.Action("ObtenerComentarios", "AuditoriaZ")', { idAuditoriaZ: id }, function (data) {
+
+                // 1. Si no hay comentarios, mostrar mensaje de vacío
+                if (data.length === 0) {
+                    if (ultimaCantidadComentarios !== 0 || $("#chatBox").find(".fa-spinner").length > 0) {
+                        $("#chatBox").html('<div class="text-center text-muted small mt-4">No hay comentarios en esta auditoría.</div>');
+                        ultimaCantidadComentarios = 0;
+                    }
+                    return;
+                }
+
+                // 2. Si el número de mensajes no ha cambiado, no hacer nada (Evita parpadeo)
+                if (data.length === ultimaCantidadComentarios) return;
+
+                let html = "";
+                data.forEach(c => {
+                    const esMio = c.esMio;
+                    const claseMio = esMio ? "chat-right" : "chat-left";
+                    const ruta = c.rutaArchivo || c.RutaArchivo;
+                    const ext = (ruta ? ruta.split('.').pop().toLowerCase() : "");
+                    const nombreFoto = c.fotoPerfil || c.FotoPerfil;
+
+                    // URL de la foto de perfil (Caché optimizada)
+                    const fotoUrl = (nombreFoto && nombreFoto.trim() !== "")
+                        ? `/uploads/perfiles/${nombreFoto}`
+                        : `/sbadmin2/img/undraw_profile.svg`;
+
+                    // Construcción del mensaje con Foto de Perfil
+                    html += `
+                        <div class="d-flex ${esMio ? 'flex-row-reverse' : ''} mb-3">
+                            <img src="${fotoUrl}"
+                                 class="rounded-circle border shadow-sm"
+                                 style="width: 35px; height: 35px; object-fit: cover; flex-shrink: 0; ${esMio ? 'margin-left: 10px;' : 'margin-right: 10px;'}"
+                                 onerror="this.src='/sbadmin2/img/undraw_profile.svg'">
+
+                            <div class="chat-message ${claseMio}" style="max-width: 85%;">
+                                <span class="chat-user">${c.nombreUsuario || "Usuario"}</span>
+                                <div>${c.mensaje || ""}</div>`;
+
+                    if (ruta) {
+                        // Video
+                        if (ext.match(/(mp4|webm|ogg)$/i)) {
+                            html += `
+                                <div class="mt-2">
+                                    <a href="${ruta}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm d-inline-flex align-items-center">
+                                        <i class="fas fa-play-circle fa-2x me-2"></i>
+                                        <div class="text-start">
+                                            <small class="d-block fw-bold">Ver Video</small>
+                                            <span style="font-size: 0.65rem;">Haga clic para reproducir</span>
+                                        </div>
+                                    </a>
+                                </div>`;
+                        }
+                        // Imagen con tu función verImagenFull
+                        else if (ext.match(/(jpg|jpeg|png|gif)$/i)) {
+                            html += `
+                                <div class="mt-2">
+                                    <img src="${ruta}"
+                                         class="img-fluid rounded border shadow-sm img-preview-chat"
+                                         style="max-height:180px; cursor:pointer; background-color: white; padding: 2px;"
+                                         onclick="verImagenFull('${ruta}')">
+                                </div>`;
+                        }
+                        // Otros archivos
+                        else {
+                            html += `<div class="mt-2"><a href="${ruta}" target="_blank" class="btn btn-sm btn-light border small"><i class="fas fa-file"></i> Ver Adjunto</a></div>`;
+                        }
+                    }
+
+                    html += `       <span class="chat-time">${c.fechaRegistroStr || c.fecha || ""}</span>
+                            </div>
+                        </div>`;
+                });
+
+                // Inyectar contenido al chatBox
+                $("#chatBox").html(html);
+
+                // 3. Scroll inteligente: Solo baja si hay mensajes nuevos
+                if (data.length > ultimaCantidadComentarios) {
+                    $("#chatBox").scrollTop($("#chatBox")[0].scrollHeight);
+                }
+
+                ultimaCantidadComentarios = data.length;
+                marcarComoLeido();
+            });
+        }
+
+        // Función para inicializar la carga del chat al abrir el detalle
+        function cargarComentarios() {
+            if (!auditoriaSeleccionada) return;
+
+            // Reseteo para nueva auditoría
+            ultimaCantidadComentarios = 0;
+
+            $("#chatBox").html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+            actualizarChatSilencioso();
+        }
+        function iniciarRefrescoChat() {
+            if (chatTimer) clearInterval(chatTimer);
+            chatTimer = setInterval(() => {
+                if ($("#chatTab").hasClass("active")) actualizarChatSilencioso();
+            }, 3000);
+        }
+
+        function enviarComentario() {
+            const msg = $("#txtMensajeChat").val().trim();
+            const file = $("#fArchivoChat")[0].files[0];
+            if (!msg && !file) return;
+
+            let formData = new FormData();
+            formData.append("idAuditoriaZ", auditoriaSeleccionada.IdAuditoriaZ || auditoriaSeleccionada.idAuditoriaZ);
+            formData.append("mensaje", msg);
+            if (file) formData.append("archivo", file);
+
+            $.ajax({
+                url: '@Url.Action("GuardarComentario", "AuditoriaZ")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(res) {
+                    if (res.success) {
+                        $("#txtMensajeChat").val("");
+                        $("#fArchivoChat").val("");
+                        actualizarChatSilencioso();
+                    }
+                }
+            });
+        }
+
+        function marcarComoLeido() {
+            if (!auditoriaSeleccionada) return;
+
+            const id = auditoriaSeleccionada.IdAuditoriaZ || auditoriaSeleccionada.idAuditoriaZ;
+
+            // 1. Desaparecer el badge visualmente de inmediato
+            $(`#notif-${id}`).addClass("d-none");
+
+            $.get('@Url.Action("ObtenerEstadoChat", "AuditoriaZ")', { idAuditoriaZ: id }, function (res) {
+                if(res.ultimoId >= 0) {
+                    const clave = `visto_auditoria_u${idUsuarioLogueado}_a${id}`;
+                    // 2. Guardar el ID más alto para que el monitor sepa que ya lo vimos
+                    localStorage.setItem(clave, res.ultimoId);
+
+                    // 3. Actualizar nuestra variable local de seguimiento para evitar conflictos de hilos
+                    ultimoIdComentarioVisto[id] = res.ultimoId;
+
+                    console.log("Leído:", id, "Msg:", res.ultimoId);
+                }
+            });
+        }
+
+   
+        // --- 5. MONITOREO OPTIMIZADO (USA EL ENDPOINT GLOBAL) ---
+        function monitorearMensajesNuevos() {
+            $.get('@Url.Action("ObtenerEstadoGlobalAuditoria", "AuditoriaZ")', function (estados) {
+                if (!estados) return;
+
+                estados.forEach(res => {
+                    const id = res.id;
+                    const clave = `visto_auditoria_u${idUsuarioLogueado}_a${id}`;
+                    const guardado = parseInt(localStorage.getItem(clave)) || 0;
+
+                    // Determinar si es la auditoría que tengo abierta y si estoy viendo el chat
+                    const esLaActualAbierta = auditoriaSeleccionada && (auditoriaSeleccionada.IdAuditoriaZ || auditoriaSeleccionada.idAuditoriaZ) == id;
+                    const viendoChatActual = esLaActualAbierta && $("#chatTab").hasClass("active");
+
+                    // Lógica de visualización:
+                    // SI (hay mensajes nuevos) Y (no soy el autor) Y (NO estoy viendo el chat ahora mismo)
+                    if (res.ultimoIdMsg > guardado && res.idAutorUltimo !== idUsuarioLogueado && !viendoChatActual) {
+                        $(`#notif-${id}`).removeClass("d-none");
+                    } else {
+                        // Si ya lo vi, o si estoy dentro del chat, me aseguro de ocultarlo
+                        $(`#notif-${id}`).addClass("d-none");
+
+                        // Si estoy viendo el chat y llega un mensaje nuevo de otro, lo marco como leido de una vez
+                        if (viendoChatActual && res.ultimoIdMsg > guardado) {
+                             localStorage.setItem(clave, res.ultimoIdMsg);
+                        }
+                    }
+                });
+            });
+        }
+        // --- 7. ACCIONES ---
+        function abrirModalNuevo() { $("#modalNuevo").modal("show"); }
+
+        function crearAuditoria() {
+            const descripcion = $("#txtNuevoProblema").val().trim();
+            const idIncidencia = $("#cboIncidencia").val();
+
+            if (descripcion === "") {
+                Swal.fire('Atención', 'Debe ingresar una observación.', 'warning');
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("Accion", "INSERT");
+            formData.append("objeto.IdTipoIncidenciaAuditoriaZ", idIncidencia);
+            formData.append("objeto.DescripcionProblema", descripcion);
+            formData.append("objeto.IdEstado", 1);
+
+            let files = $("#fArchivos")[0].files;
+            for (let i = 0; i < files.length; i++) {
+                formData.append("archivos", files[i]);
+            }
+
+            $.ajax({
+                url: '@Url.Action("GuardarAuditoria", "AuditoriaZ")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                beforeSend: function() { Swal.showLoading(); },
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Éxito', res.mensaje, 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('No se pudo crear', res.mensaje, 'error');
+                    }
+                }
+            });
+        }
+
+        function guardarCambiosAuditoria() {
+            if (!auditoriaSeleccionada) return;
+            const resText = $("#txtResolucion").val().trim();
+
+            let formData = new FormData();
+            formData.append("Accion", "UPDATE");
+            formData.append("objeto.IdAuditoriaZ", auditoriaSeleccionada.IdAuditoriaZ || auditoriaSeleccionada.idAuditoriaZ);
+            formData.append("objeto.IdUsuarioSolicitador", auditoriaSeleccionada.IdUsuarioSolicitador || auditoriaSeleccionada.idUsuarioSolicitador);
+            formData.append("objeto.IdTipoIncidenciaAuditoriaZ", auditoriaSeleccionada.IdTipoIncidenciaAuditoriaZ || auditoriaSeleccionada.idTipoIncidenciaAuditoriaZ);
+            formData.append("objeto.DescripcionProblema", auditoriaSeleccionada.DescripcionProblema || auditoriaSeleccionada.descripcionProblema);
+            formData.append("objeto.ResolucionProblema", resText);
+            formData.append("objeto.IdEstado", 4);
+
+            $.ajax({
+                url: '@Url.Action("GuardarAuditoria", "AuditoriaZ")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Guardado', 'Cerrado correctamente', 'success').then(() => location.reload());
+                        if (nuevoEstadoId === 4) {
+                            bloquearChatVisualmente();
+                        }
+                    } else {
+                        Swal.fire('Error', res.mensaje, 'error');
+                    }
+                }
+            });
+        }
+
+        function cargarAdjuntos(id) {
+            $.get('@Url.Action("ObtenerAdjuntos", "AuditoriaZ")', { idAuditoriaZ: id }, function(data) {
+                let html = data.map(x => `<a href="${x.ruta}" target="_blank" class="list-group-item list-group-item-action small"><i class="fas fa-file-download me-2"></i>${x.nombreOriginal}</a>`).join('');
+                $("#listaAdjuntos").html(html || '<div class="p-3 text-center text-muted small">Sin adjuntos</div>');
+            });
+        }
+
+        // Pegar imágenes
+        document.addEventListener('paste', function (e) {
+            if (!auditoriaSeleccionada || !$("#chatTab").hasClass("active")) return;
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].kind === 'file') {
+                    const blob = items[i].getAsFile();
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(blob);
+                    document.getElementById('fArchivoChat').files = dataTransfer.files;
+                    Swal.fire({ title: 'Imagen cargada', icon: 'info', timer: 1000, showConfirmButton: false });
+                }
+            }
+        });
+        function bloquearChatVisualmente() {
+            $("#txtMensajeChat").prop("disabled", true)
+                .val("")
+                .attr("placeholder", "Caso cerrado - No se admiten más mensajes");
+            $(".btn-primary[onclick='enviarComentario()']").prop("disabled", true);
+            $("#fArchivoChat").prop("disabled", true);
+            $(".fa-paper-plane").closest("button").addClass("btn-secondary").removeClass("bg-primary");
+
+            // Opcional: Ocultar el botón de guardar si ya está cerrado
+            $("#btnGuardarAuditoria").hide();
+        }
+    </script>
+}

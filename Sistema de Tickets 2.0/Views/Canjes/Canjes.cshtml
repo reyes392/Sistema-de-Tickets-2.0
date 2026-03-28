@@ -1,0 +1,1030 @@
+﻿@model List<Capa_Entidad.Canjes.E_Canje>
+
+@{
+    ViewData["Title"] = "Gestión de Canjes";
+}
+<style>
+    /* Estilos para el Chat */
+    #chatBox {
+        height: 350px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        gap: 12px;
+    }
+
+    .chat-message {
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        position: relative;
+        font-size: 0.9rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .chat-left {
+        align-self: flex-start;
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        color: #333;
+    }
+
+    .chat-right {
+        align-self: flex-end;
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    .chat-time {
+        font-size: 0.65rem;
+        display: block;
+        margin-top: 4px;
+        opacity: 0.7;
+    }
+
+    .chat-user {
+        font-size: 0.7rem;
+        font-weight: bold;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .notif-badge {
+        font-size: 0.6rem;
+        padding: 4px 6px;
+        margin-left: 5px;
+        animation: pulse 1.5s infinite; /* Acelerado un poco para mejor visibilidad */
+    }
+    /* Si el mensaje empieza con el icono de pin, le damos un estilo de "tarjeta" */
+    .chat-message:contains("📌") {
+        background-color: #fff3cd !important; /* Amarillo claro tipo nota */
+        border: 1px border-left: 5px solid #ffc107 !important;
+        color: #856404 !important;
+        white-space: pre-line; /* Para que respete los saltos de línea */
+    }
+    @@keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.3;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        @* --- LISTADO DE CANJES --- *@
+        <div class="col-md-6 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><i class="fas fa-exchange-alt"></i> Listado de Canjes</h2>
+                <button class="btn btn-primary shadow-sm" onclick="abrirModalNuevo()">
+                    <i class="fas fa-plus-circle"></i> Nuevo Canje
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover shadow-sm border" id="tblCanjes">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Solicitante</th>
+                            <th>Incidencia</th>
+                            <th>Registro</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            <tr id="row-@t.IdCanje">
+                                <td>
+                                    <span class="fw-bold">@t.IdCanje</span>
+                                    @* ID del badge correcto *@
+                                    <span id="notif-@t.IdCanje" class="badge rounded-pill bg-danger d-none notif-badge">
+                                        <i class="fas fa-comment"></i>
+                                    </span>
+                                </td>
+                                <td>@t.NombreSolicitador</td>
+                                <td>@t.TipoIncidencia</td>
+                                <td>@t.FechaRegistro</td>
+                                <td>
+                                    <span class="badge @(t.IdEstado == 3 ? "bg-warning text-dark" : (t.IdEstado == 6 ? "bg-success" : "bg-info"))">
+                                        @t.Estado
+                                    </span>
+                                </td>
+
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary btn-ver" data-info='@Json.Serialize(t)'>
+                                        <i class="fas fa-eye"></i> Ver
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* --- DETALLE DEL CANJE --- *@
+        <div class="col-md-6 bg-light p-4" id="seccionDetalle" style="display:none; min-height: 85vh;">
+            <ul class="nav nav-tabs" id="canjeTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                        <i class="fas fa-info-circle"></i> Gestión
+                    </button>
+                </li>
+                <li class="nav-item">
+                    @* Asegurar que el click recarga el chat *@
+                    <button class="nav-link fw-bold" id="tabChat" data-bs-toggle="tab" data-bs-target="#chatTab" type="button" onclick="cargarChat()">
+                        <i class="fas fa-comments"></i> Chat / Notas
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content border border-top-0 p-4 bg-white shadow-sm">
+                @* Pestaña Información *@
+                <div class="tab-pane fade show active" id="info">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="text-primary m-0">Canje #<span id="lblIdCanje"></span></h5>
+                        <span id="badgeEstado" class="badge p-2"></span>
+                    </div>
+
+                    <div class="row g-2 mb-4 border-bottom pb-3">
+                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Fecha Registro:</strong> <span id="txtFechaRegistro" class="d-block text-muted"></span></div>
+
+                        <div class="col-6 small border-top mt-2 pt-2"><strong>Autorizado por:</strong> <span id="txtAutorizador" class="d-block text-success"></span></div>
+                        <div class="col-6 small border-top mt-2 pt-2"><strong>Fecha Autorizado:</strong> <span id="txtFechaAutorizado" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Anulado por:</strong> <span id="txtAnulador" class="d-block text-danger"></span></div>
+                        <div class="col-6 small"><strong>Fecha Anulado:</strong> <span id="txtFechaAnulado" class="d-block text-muted"></span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold small text-primary">Descripción del Problema:</label>
+                        <div id="divDescripcionDetalle" class="p-2 border rounded bg-light" style="min-height: 60px; white-space: pre-wrap;"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fw-bold small text-success">Resolución:</label>
+                        <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
+                    </div>
+                    @if (ViewBag.RolUsuario == 1 || ViewBag.RolUsuario == 7 || ViewBag.RolUsuario == 6)
+                    {
+                        <div id="contenedorBotonGuardar">
+
+                            <button id="btnGuardarCanje" class="btn btn-success w-100" onclick="guardarCambiosCanje()">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+
+                        </div>
+                    }
+
+                </div>
+                  
+                @* Pestaña Chat *@
+                <div class="tab-pane fade" id="chatTab">
+                    <div id="chatBox"></div>
+                    <div id="divPreviewChat" class="mt-2" style="display:none;">
+                        <span class="badge bg-info text-dark">
+                            <i class="fas fa-paperclip"></i> <span id="lblNombreArchivoChat"></span>
+                            <i class="fas fa-times ms-2" style="cursor:pointer" onclick="limpiarArchivoChat()"></i>
+                        </span>
+                    </div>
+                    <div class="input-group mt-3" id="contenedorEscrituraChat">
+                        @*// Busca donde tienes el input-group del chat y añade este botón:*@
+                        @if (ViewBag.RolUsuario == 1 || ViewBag.RolUsuario == 7)
+                        {
+                            <button class="btn btn-outline-info" type="button" onclick="$('#modalSolicitarInfo').modal('show')">
+                                <i class="fas fa-list-check">Solicitar info</i>
+                            </button>
+                        }
+                            <input type="file" id="fArchivoChat" style="display:none" onchange="seleccionarArchivoChat(this)" />
+                            <button class="btn btn-outline-secondary" type="button" onclick="$('#fArchivoChat').click()">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+
+                            <input type="text" id="txtMensajeChat" class="form-control" placeholder="Escribe un comentario..." onkeypress="if(event.keyCode==13) enviarComentario()">
+                            <button class="btn btn-primary" type="button" onclick="enviarComentario()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 d-flex align-items-center justify-content-center bg-light border" id="detalleVacio" style="min-height: 85vh;">
+            <div class="text-center text-muted">
+                <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
+                <p>Selecciona un canje de la lista para ver el detalle</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* --- MODAL NUEVO Canje --- *@
+<div class="modal fade" id="modalNuevoCanje" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle"></i> Nuevo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Tipo de Incidencia</label>
+                    <select id="cboIncidencia" class="form-select border-primary">
+                        <option value="">Seleccione...</option>
+                        @foreach (var item in ViewBag.Incidencias)
+                        {
+                            <option value="@item.IdTiposIncidenciasCanjes">@item.Descripcion</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
+                    <textarea id="txtDescripcionNueva" class="form-control border-primary" rows="4" placeholder="Explique detalladamente la situación..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-link text-muted" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="crearCanje()">Crear Canje</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modalSolicitarInfo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-clipboard-list"></i> Solicitar Información Específica</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">DATOS REQUERIDOS:</label>
+                    <textarea id="txtInfoRequerida" class="form-control" rows="5">- Numero de factura
+                        - Fecha de la factura 
+                        - # de caja
+                        - Forma de pago 
+                        - Foto</textarea>
+                </div>
+                <div class="alert alert-light border small text-muted">
+                    <i class="fas fa-info-circle"></i> Esta lista se enviará como un mensaje destacado en el chat.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info text-white" onclick="enviarSolicitudEstructurada()">Enviar al Chat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalResponderInfo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-reply"></i> Enviar Información Solicitada</h5>
+                @*<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>*@
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="contenedorCamposDinamicos">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="enviarRespuestaConsolidada()">Enviar Datos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        let ultimaCantidadComentarios = 0;
+    // --- 1. CONFIGURACIÓN Y USUARIO ---
+          const user = {
+            id: parseInt('@ViewBag.IdUsuarioLogueado') || 0,
+            nombre: '@ViewBag.NombreUsuarioLogueado',
+            rol: parseInt('@ViewBag.RolUsuario') || 0,
+
+            isStaff: function() {
+                return [1, 3, 6, 7].includes(this.rol);
+            },
+
+            canAnular: function() {
+                return [1, 6].includes(this.rol);
+            }
+        };
+
+        let state = {
+            canjeSeleccionado: null,
+            chatTimer: null,
+            intervaloPestaña: null,
+            tituloOriginal: document.title,
+            versionCanjeActual: "",
+            ultimoIdComentarioVisto: JSON.parse(localStorage.getItem('chat_visto_' + user.id)) || {}
+        };
+
+        const getId = (obj) => obj ? (obj.IdCanje || obj.idCanje || obj.IDCANJE || 0) : 0;
+
+        // --- 2. INICIALIZACIÓN ---
+        $(document).ready(function () {
+
+
+            $('#tblCanjes').DataTable({
+
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                order: [],
+                language: {
+                    lengthMenu: "Mostrar _MENU_ registros",
+
+                    zeroRecords: "No se encontraron datos",
+                    info: "Página _PAGE_ de _PAGES_",
+                    infoEmpty: "No hay registros",
+                    infoFiltered: "(filtrado de _MAX_ registros)",
+                    search: "Buscar:",
+                    paginate: {
+                        first: "Primero",
+                        last: "Último",
+                        next: "Siguiente",
+                        previous: "Anterior"
+                    }
+                }
+
+            });
+            // Carga inicial de versión
+            $.get('@Url.Action("ObtenerVersionCanjes", "Canjes")', v => state.versionCanjeActual = v);
+
+            // Intervalos de monitoreo
+            setInterval(verificarCambiosCanje, 15000); // Tabla cada 15 seg
+            setInterval(monitorearMensajesNuevos, 7000); // Badges cada 7 seg
+            setInterval(refrescarTablaCanjes, 15000); // Badges cada 15 seg
+        });
+
+        // --- 3. ACTUALIZACIÓN AUTOMÁTICA DE TABLA ---
+        function verificarCambiosCanje() {
+            $.get('@Url.Action("ObtenerVersionCanjes", "Canjes")', function (nuevaVersion) {
+                if (state.versionCanjeActual !== "" && nuevaVersion !== state.versionCanjeActual) {
+                    state.versionCanjeActual = nuevaVersion;
+                    refrescarTablaCanjes();
+                }
+            });
+        }
+        function refrescarTablaCanjes() {
+            $.get(window.location.href, function (data) {
+                const nuevoContenido = $(data).find("#tblCanjes tbody").html();
+                $("#tblCanjes tbody").html(nuevoContenido);
+
+                // RE-VINCULAR DATOS: Si hay un canje abierto, buscamos su nueva info en la tabla
+                if (state.canjeSeleccionado) {
+                    const idActual = getId(state.canjeSeleccionado);
+                    // Buscamos el botón "Ver" de la fila que acabamos de renderizar
+                    const botonNuevo = $(`#row-${idActual} .btn-ver`);
+
+                    if (botonNuevo.length > 0) {
+                        const infoActualizada = botonNuevo.data("info");
+                        state.canjeSeleccionado = infoActualizada;
+                        verDetalle(infoActualizada); // Esto repinta los textos de auditoría
+                    }
+                }
+            });
+        }
+
+       // --- 4. GESTIÓN DE DETALLE Y ESTADOS ---
+             $(document).on("click", ".btn-ver", function () {
+                let info = $(this).data("info");
+                const id = getId(info);
+                const idEstado = parseInt(info.IdEstado || info.idEstado || 0);
+                const idAsignado = parseInt(info.IdUsuarioAsignado || info.idUsuarioAsignado || 0);
+
+                // Capturamos el ID de incidencia (importante para tu SP)
+                const idIncidencia = info.IdTipoIncidenciaCanjes || info.idTipoIncidenciaCanjes || 0;
+
+                // Si es Pendiente (3), no tiene asignado y soy Staff (1, 3, 7)
+                if (idEstado === 3 && idAsignado === 0 && user.isStaff()) {
+
+                    // Creamos el objeto exactamente como lo espera tu Action "GuardarCanje"
+                    let formData = new FormData();
+                    formData.append("canjes.IdCanje", id);
+                    formData.append("canjes.IdTipoIncidencia", idIncidencia); // Enviamos la incidencia actual
+                    formData.append("canjes.IdEstado", 5); // Cambiamos a 'En Proceso'
+                    formData.append("canjes.Resolucion", "");
+                    formData.append("Accion", "UPDATE");
+
+                    $.ajax({
+                        url: '@Url.Action("GuardarCanje", "Canjes")',
+                        type: "POST",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (res) {
+                            if (res.success) {
+                                refrescarTablaCanjes();
+                                // Actualizamos el objeto info localmente para la UI
+                                info.IdEstado = 5;
+                                info.Estado = "EN PROCESO";
+                                info.NombreAsignado = user.nombre;
+                            }
+                            verDetalle(info);
+                        },
+                        error: function() {
+                            verDetalle(info);
+                        }
+                    });
+                } else {
+                    // Si ya está en proceso o no tengo permiso de staff, solo ver detalle
+                    verDetalle(info);
+                }
+            });
+                function verDetalle(canje) {
+            state.canjeSeleccionado = canje;
+            $("#seccionDetalle").show();
+            $("#detalleVacio").hide();
+
+            // ID y Datos Principales
+            $("#lblIdCanje").text(getId(canje));
+            $("#txtSolicitante").text(canje.nombreSolicitador || canje.NombreSolicitador || "N/A");
+            $("#txtIncidencia").text(canje.tipoIncidencia || canje.TipoIncidencia || "N/A");
+            $("#txtAsignado").text(canje.nombreAsignado || canje.NombreAsignado || "Sin asignar");
+
+            // Fechas (Usa el operador || para asegurar que tome la propiedad correcta)
+            $("#txtFechaRegistro").text(formatearFecha(canje.fechaRegistro || canje.FechaRegistro));
+            // Usamos .text() para seguridad y white-space: pre-wrap en el CSS/HTML para los saltos de línea
+            $("#divDescripcionDetalle").text(canje.descripcionProblema || canje.DescripcionProblema || "Sin descripción proporcionada.");
+            $("#txtResolucion").val(canje.resolucion || canje.Resolucion || "");
+
+            // --- AUDITORÍA (Nombres de Autorizador y Anulador) ---
+            // IMPORTANTE: Asegúrate de que coincidan con los nombres en tu clase E_Canje
+            $("#txtAutorizador").text(canje.nombreAutorizador || canje.NombreAutorizador || "---");
+            $("#txtFechaAutorizado").text(formatearFecha(canje.fechaAutorizado || canje.FechaAutorizado));
+
+            $("#txtAnulador").text(canje.nombreAnulador || canje.NombreAnulador || "---");
+            $("#txtFechaAnulado").text(formatearFecha(canje.fechaAnulado || canje.FechaAnulado)); // Corregido 'canal' por 'canje'
+
+            actualizarUIEstado(canje);
+        }
+
+        function actualizarUIEstado(canje) {
+            // Aseguramos que el ID del estado sea un número
+            const idEstado = parseInt(canje.IdEstado || canje.idEstado || 0);
+            const miRol = parseInt(user.rol);
+            const est = (canje.Estado || "").trim().toLowerCase();
+
+            // 1. Badge de Estado
+            const colores = {
+                "pendiente": "bg-warning text-dark",
+                "en proceso": "bg-info text-white",
+                "cerrado": "bg-success text-white",
+                "autorizado": "bg-success text-white",
+                "anulado": "bg-danger text-white"
+            };
+            $("#badgeEstado").text(est.toUpperCase()).attr("class", "badge p-2 " + (colores[est] || "bg-secondary"));
+
+            // 2. Renderizado de Botones
+            let htmlBotones = '';
+
+            // CONDICIÓN PARA BOTÓN ANULAR (Si es Autorizado Y soy Rol 1 o 6)
+            if (idEstado === 6 && (miRol === 1 || miRol === 6)) {
+                htmlBotones = `<button class="btn btn-danger w-100" onclick="anularCanje()">
+                         <i class="fas fa-ban"></i> Anular Canje (Call Center)
+                       </button>`;
+            }
+            // CONDICIÓN PARA BOTÓN GUARDAR (Si NO es finalizado Y soy Staff operativo)
+            else if (idEstado !== 6 && idEstado !== 7 && user.isStaff()) {
+                htmlBotones = `<button class="btn btn-success w-100" onclick="guardarCambiosCanje()">
+                         <i class="fas fa-save"></i> Guardar Cambios
+                       </button>`;
+            }
+
+            $("#contenedorBotonGuardar").html(htmlBotones);
+
+            // 3. Control del Chat
+            if (idEstado === 6 || idEstado === 7) {
+                $("#contenedorEscrituraChat").hide();
+            } else {
+                $("#contenedorEscrituraChat").show();
+            }
+        }
+
+        // --- 5. FUNCIONES DE CHAT ---
+
+        function cargarChat() {
+            if (!state.canjeSeleccionado) return;
+            const id = getId(state.canjeSeleccionado);
+
+            // Reseteo para evitar que crea que son los mensajes del canje anterior
+            ultimaCantidadComentarios = 0;
+            $("#chatBox").html('<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>');
+
+            if (state.chatTimer) clearInterval(state.chatTimer);
+
+            actualizarChatSilencioso();
+
+            state.chatTimer = setInterval(() => {
+                // Solo actualizar si la pestaña del chat está visible
+                if ($("#chatTab").hasClass("active")) {
+                    actualizarChatSilencioso();
+                }
+            }, 5000);
+        }
+
+
+        window.verImagenFull = function(url) {
+            if (url) window.open(url, '_blank');
+        };
+
+        function limpiarArchivoChat() {
+            $("#fArchivoChat").val("");
+            $("#containerMiniaturaChat").remove();
+            $("#divPreviewChat").hide();
+            $("#lblNombreArchivoChat").text("");
+        }
+
+        function seleccionarArchivoChat(input) {
+            if (input.files.length > 0) {
+                const file = input.files[0];
+                $("#lblNombreArchivoChat").text(file.name);
+                $("#divPreviewChat").show();
+
+                // Si es imagen, generar miniatura con botón X
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        let previewHtml = `
+                            <div id="containerMiniaturaChat" style="position: relative; display: inline-block; margin-bottom: 8px;">
+                                <img id="imgMiniaturaChat" src="${e.target.result}"
+                                     style="max-height: 70px; border-radius: 5px; border: 2px solid #0d6efd; display: block;">
+                                <span onclick="limpiarArchivoChat()"
+                                      style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white;
+                                             border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center;
+                                             justify-content: center; font-size: 12px; cursor: pointer; border: 2px solid white; z-index: 10;">
+                                    <i class="fas fa-times"></i>
+                                </span>
+                            </div>`;
+
+                        if ($("#containerMiniaturaChat").length > 0) {
+                            $("#containerMiniaturaChat").replaceWith(previewHtml);
+                        } else {
+                            $("#divPreviewChat").prepend(previewHtml);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    $("#containerMiniaturaChat").remove();
+                }
+            }
+        }
+
+        // --- 2. ACTUALIZACIÓN DEL CHAT (MULTIMEDIA) ---
+        function verificarSiQuedanNotificaciones() {
+            // Si no hay ningún badge visible en la tabla, detenemos el parpadeo
+            if ($(".badge-notif:not(.d-none)").length === 0) {
+                detenerParpadeoTitulo();
+            }
+        }
+        function actualizarChatSilencioso() {
+            if (!state.canjeSeleccionado) return;
+            const id = getId(state.canjeSeleccionado);
+
+            $.get('@Url.Action("ObtenerComentarios", "Canjes")', { idCanje: id }, function (data) {
+
+                // 1. Manejo de estado vacío
+                if (!data || data.length === 0) {
+                    if (ultimaCantidadComentarios !== 0) {
+                        $("#chatBox").html('<div class="text-center text-muted small mt-4">No hay mensajes en este canje.</div>');
+                        ultimaCantidadComentarios = 0;
+                    }
+                    return;
+                }
+
+                // 2. Si la cantidad no ha cambiado, evitamos repintar el DOM (adiós parpadeo)
+                /*  if (data.length === ultimaCantidadComentarios) return;*/
+                if (data.length > ultimaCantidadComentarios) {
+                    $("#chatBox").animate({ scrollTop: $("#chatBox")[0].scrollHeight }, 300);
+
+                    // En lugar de hacer otro $.get, tomamos el ID del último mensaje del array 'data'
+                    const ultimoMsg = data[data.length - 1];
+                    const ultimoIdRemoto = ultimoMsg.idComentario || ultimoMsg.IdComentario; // Ajusta según tu E_Comentario
+
+                    guardarLecturaLocal(id, ultimoIdRemoto);
+
+                    // Ocultamos el badge inmediatamente ya que lo estamos viendo
+                    $(`#notif-${id}`).addClass("d-none");
+
+                    // Verificamos si debemos detener el parpadeo del título
+                    verificarSiQuedanNotificaciones();
+                }
+
+                let html = "";
+                data.forEach(c => {
+                    const esMio = c.esMio;
+                    const claseMio = esMio ? "chat-right" : "chat-left";
+                    const ruta = c.rutaArchivo || c.RutaArchivo;
+                    const ext = (ruta ? ruta.split('.').pop().toLowerCase() : "");
+                    const nombreFoto = c.fotoPerfil || c.FotoPerfil;
+
+                    // Lógica de Foto de Perfil
+                    const fotoUrl = (nombreFoto && nombreFoto.trim() !== "")
+                        ? `/uploads/perfiles/${nombreFoto}`
+                        : `/sbadmin2/img/undraw_profile.svg`;
+
+                    // Lógica de Solicitud Estructurada (La mantenemos de tu versión anterior)
+                    const esEstructurado = c.mensaje && c.mensaje.includes("📌");
+                    const msgBase64 = btoa(unescape(encodeURIComponent(c.mensaje)));
+                    const estiloExtra = esEstructurado ? `style="cursor:pointer; border-left: 5px solid #ffc107;" onclick="abrirFormularioRespuesta('${msgBase64}')"` : '';
+                    const badgeInfo = esEstructurado ? '<br><small class="badge bg-warning text-dark"><i class="fas fa-edit"></i> Clic para responder</small>' : '';
+
+                    html += `
+                        <div class="d-flex ${esMio ? 'flex-row-reverse' : ''} mb-3">
+                            <img src="${fotoUrl}"
+                                 class="rounded-circle border shadow-sm"
+                                 style="width: 35px; height: 35px; object-fit: cover; flex-shrink: 0; ${esMio ? 'margin-left: 10px;' : 'margin-right: 10px;'}"
+                                 onerror="this.src='/sbadmin2/img/undraw_profile.svg'">
+
+                            <div class="chat-message ${claseMio}" ${estiloExtra} style="max-width: 80%;">
+                                <span class="chat-user">${c.nombreUsuario || "Usuario"}</span>
+                                <div>${c.mensaje || ""} ${badgeInfo}</div>`;
+
+                    // Lógica Multimedia
+                    if (ruta) {
+                        if (ext.match(/(mp4|webm|ogg)$/i)) {
+                            html += `
+                                <div class="mt-2">
+                                    <a href="${ruta}" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm d-inline-flex align-items-center">
+                                        <i class="fas fa-play-circle fa-2x me-2"></i>
+                                        <div class="text-start">
+                                            <small class="d-block fw-bold">Ver Video</small>
+                                            <span style="font-size: 0.65rem;">Click para reproducir</span>
+                                        </div>
+                                    </a>
+                                </div>`;
+                        } else if (ext.match(/(jpg|jpeg|png|gif)$/i)) {
+                            html += `<div class="mt-2"><img src="${ruta}" class="img-fluid rounded border shadow-sm" style="max-height:150px; cursor:pointer;" onclick="verImagenFull('${ruta}')"></div>`;
+                        } else {
+                            html += `<div class="mt-2"><a href="${ruta}" target="_blank" class="btn btn-sm btn-light border small text-dark"><i class="fas fa-file-download"></i> Documento</a></div>`;
+                        }
+                    }
+
+                    html += `   <span class="chat-time">${c.fecha || ""}</span>
+                            </div>
+                        </div>`;
+                });
+
+                $("#chatBox").html(html);
+
+                // 3. Scroll inteligente: Solo baja si hay mensajes nuevos
+                if (data.length > ultimaCantidadComentarios) {
+                    $("#chatBox").animate({ scrollTop: $("#chatBox")[0].scrollHeight }, 300);
+
+                    // Marcar lectura localmente
+                    $.get('@Url.Action("ObtenerEstadoChat", "Canjes")', { idCanje: id }, function (res) {
+                        guardarLecturaLocal(id, res.ultimoId);
+                    });
+                }
+
+                ultimaCantidadComentarios = data.length;
+            });
+        }
+
+        function enviarComentario() {
+            const msg = $("#txtMensajeChat").val().trim();
+            const file = $("#fArchivoChat")[0].files[0];
+            if (!msg && !file) return;
+
+            let formData = new FormData();
+            formData.append("idCanje", getId(state.canjeSeleccionado));
+            formData.append("mensaje", msg);
+            if (file) formData.append("archivo", file);
+
+            $.ajax({
+                url: '@Url.Action("GuardarComentario", "Canjes")',
+                type: "POST", data: formData, contentType: false, processData: false,
+                success: function(res) {
+                    if (res.success) {
+                        $("#txtMensajeChat").val("");
+                        limpiarArchivoChat();
+                        actualizarChatSilencioso();
+                    }
+                }
+            });
+        }
+
+        // --- 6. ACCIONES CRUD ---
+        function anularCanje() {
+            Swal.fire({
+                title: '¿Anular este canje?',
+                text: "Se registrará como anulado en el sistema",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sí, anular'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarDatos({
+                        IdCanje: getId(state.canjeSeleccionado),
+                        IdEstado: 7, // ID Estado Anulado
+                        IdTipoIncidencia: state.canjeSeleccionado.IdTipoIncidenciaCanjes || state.canjeSeleccionado.idTipoIncidenciaCanjes
+                    }, "UPDATE");
+                }
+            });
+        }
+
+        function guardarCambiosCanje() {
+            if (!state.canjeSeleccionado) return;
+            const res = $("#txtResolucion").val().trim();
+
+            const canjeData = {
+                IdCanje: getId(state.canjeSeleccionado),
+                Resolucion: res,
+                IdEstado: (res !== "") ? 6 : 5, // 6 = Autorizado/Cerrado
+                IdTipoIncidencia: state.canjeSeleccionado.IdTipoIncidenciaCanjes || state.canjeSeleccionado.idTipoIncidenciaCanjes || state.canjeSeleccionado.idTipoIncidencia,
+                // ENVIAMOS EL USUARIO LOGUEADO COMO EL QUE GESTIONA
+                IdUsuarioAsignado: user.id
+            };
+
+            Swal.fire({
+                title: '¿Confirmar gestión?',
+                text: (res !== "") ? "El canje se marcará como Autorizado" : "Se guardará el progreso",
+                icon: 'question',
+                showCancelButton: true
+            }).then((result) => {
+                if (result.isConfirmed) enviarDatos(canjeData, "UPDATE");
+            });
+        }
+        function crearCanje() {
+            const idIncidencia = $("#cboIncidencia").val();
+            const descripcion = $("#txtDescripcionNueva").val().trim(); // --- NUEVO ---
+            if (!idIncidencia) {
+                Swal.fire('Atención', 'Por favor, seleccione un tipo de incidencia', 'warning');
+                return;
+            }
+            if (descripcion === "") { // --- NUEVO: Validación opcional ---
+                Swal.fire('Atención', 'Por favor, describa el problema para ayudar al soporte', 'warning');
+                return;
+            }
+            // Objeto para INSERT
+            const nuevoCanje = {
+                IdCanje: 0,
+                IdTipoIncidencia: parseInt(idIncidencia),
+                DescripcionProblema: descripcion, // --- NUEVO ---
+                IdEstado: 3 // Pendiente
+            };
+
+            enviarDatos(nuevoCanje, "INSERT");
+        }
+        function enviarDatos(obj, accion) {
+            let formData = new FormData();
+            formData.append("Accion", accion);
+            // Si es UPDATE y tenemos descripción en el estado actual, la mantenemos
+            if (accion === "UPDATE" && state.canjeSeleccionado) {
+                formData.append("canjes.DescripcionProblema", state.canjeSeleccionado.DescripcionProblema || state.canjeSeleccionado.descripcionProblema || "");
+            }
+            for (let key in obj) { formData.append("canjes." + key, obj[key]); }
+
+            $.ajax({
+                url: '@Url.Action("GuardarCanje", "Canjes")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Éxito', res.mensaje, 'success');
+                        $("#modalNuevoCanje").modal("hide");
+
+                        if (accion === "INSERT") {
+                            $("#seccionDetalle").hide();
+                            $("#detalleVacio").show();
+                            state.canjeSeleccionado = null;
+                            refrescarTablaCanjes();
+                        } else {
+                            // Si es UPDATE, recargamos la tabla y
+                            // buscamos la nueva info para repintar el detalle
+                            refrescarTablaCanjes();
+                        }
+                    } else {
+                        Swal.fire('Error', res.mensaje || 'Error al procesar', 'error');
+                    }
+                }
+            });
+        }
+
+        // --- 7. UTILIDADES ---
+       
+        function monitorearMensajesNuevos() {
+            // 1. Recopilamos todos los IDs de los canjes que están en la tabla
+            let idsVisibles = [];
+            $(".btn-ver").each(function () {
+                const id = getId($(this).data("info"));
+                if (id > 0) idsVisibles.push(id);
+            });
+
+            if (idsVisibles.length === 0) return;
+
+            // 2. Pedimos el estado de TODOS de un solo golpe
+            $.get('@Url.Action("ObtenerEstadoGlobalCanjes", "Canjes")', function (res) {
+                let hayMensajesNuevosGlobal = false;
+
+                res.forEach(estado => {
+                    // Buscamos el ID visto en nuestro objeto de estado
+                    const idVisto = state.ultimoIdComentarioVisto[estado.id] || 0;
+
+                    // Si el ID remoto es mayor y el autor no soy yo...
+                    if (estado.ultimoIdMsg > idVisto && estado.idAutorUltimo !== user.id) {
+                        $(`#notif-${estado.id}`).removeClass("d-none");
+
+                        // Si no es el canje que tengo abierto, activamos parpadeo
+                        if (estado.id !== getId(state.canjeSeleccionado)) {
+                            hayMensajesNuevosGlobal = true;
+                        }
+                    } else {
+                        $(`#notif-${estado.id}`).addClass("d-none");
+                    }
+                });
+
+                if (hayMensajesNuevosGlobal) {
+                    iniciarParpadeoTitulo();
+                } else {
+                    // Si ya no hay mensajes nuevos en ningún canje (excepto quizás el abierto)
+                    detenerParpadeoTitulo();
+                }
+            });
+        }
+
+        //function guardarLecturaLocal(id, ultimoId) {
+        //    state.ultimoIdComentarioVisto[id] = ultimoId;
+        //    localStorage.setItem('chat_visto_' + user.id, JSON.stringify(state.ultimoIdComentarioVisto));
+        //}
+        function guardarLecturaLocal(id, ultimoId) {
+            // 1. Mantiene tu lógica actual de objeto JSON para las notificaciones (badges)
+            state.ultimoIdComentarioVisto[id] = ultimoId;
+            localStorage.setItem('chat_visto_' + user.id, JSON.stringify(state.ultimoIdComentarioVisto));
+
+            // 2. Inserta aquí la nueva línea adaptada a tus variables:
+            // idUsuarioLogueado -> user.id
+            // idCanje -> id
+            // ultimoIdMensaje -> ultimoId
+            localStorage.setItem(`visto_canje_u${user.id}_c${id}`, ultimoId);
+        }
+        function formatearFecha(f) {
+            if (!f || f.includes("0001-01-01")) return "---";
+            let d = new Date(f);
+            return isNaN(d) ? "---" : d.toLocaleString('es-NI');
+        }
+
+        function iniciarParpadeoTitulo() {
+            if (state.intervaloPestaña) return;
+            state.intervaloPestaña = setInterval(() => {
+                document.title = (document.title === state.tituloOriginal) ? "✨ ACTUALIZACIÓN ✨" : state.tituloOriginal;
+            }, 1000);
+        }
+
+        function detenerParpadeoTitulo() {
+            clearInterval(state.intervaloPestaña);
+            state.intervaloPestaña = null;
+            document.title = state.tituloOriginal;
+        }
+
+     /*   function seleccionarArchivoChat(input) { if (input.files.length > 0) { $("#lblNombreArchivoChat").text(input.files[0].name); $("#divPreviewChat").show(); } }*/
+        function limpiarArchivoChat() { $("#fArchivoChat").val(""); $("#divPreviewChat").hide(); }
+        /* function abrirModalNuevo() { $("#cboIncidencia").val(""); $("#modalNuevoCanje").modal("show"); }*/
+        function abrirModalNuevo() {
+            $("#cboIncidencia").val("");
+            $("#txtDescripcionNueva").val(""); // --- NUEVO: Limpiar el campo al abrir ---
+            $("#modalNuevoCanje").modal("show");
+        }
+
+        function enviarSolicitudEstructurada() {
+            const cuerpo = $("#txtInfoRequerida").val().trim();
+            if (cuerpo === "") return;
+
+            // Consolidamos la información con un formato visual
+            const mensajeConsolidado = `📌 **SOLICITUD DE INFORMACIÓN**\n\n${cuerpo}\n\n*Por favor, responder a la brevedad.*`;
+
+            let formData = new FormData();
+            formData.append("idCanje", getId(state.canjeSeleccionado));
+            formData.append("mensaje", mensajeConsolidado);
+            // No enviamos archivo en esta modalidad estructurada
+
+            $.ajax({
+                url: '@Url.Action("GuardarComentario", "Canjes")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(res) {
+                    if (res.success) {
+                        $("#txtInfoRequerida").val(""); // Limpiar modal
+                        $("#modalSolicitarInfo").modal("hide");
+                        actualizarChatSilencioso(); // Refrescar chat
+                    }
+                }
+            });
+        }
+
+        function abrirFormularioRespuesta(base64Msg) {
+            const mensaje = decodeURIComponent(escape(atob(base64Msg)));
+            const lineas = mensaje.split('\n').filter(l => l.trim().startsWith('-'));
+
+            let htmlInputs = "";
+            lineas.forEach((l) => {
+                const label = l.replace('-', '').trim();
+                if (label !== "") {
+                    const esFoto = label.toLowerCase().includes("foto");
+
+                    htmlInputs += `
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-uppercase">${label}</label>
+                ${esFoto ?
+                            `<input type="file" class="form-control input-respuesta-file" data-label="${label}" accept="image/*">` :
+                            `<input type="text" class="form-control input-respuesta" data-label="${label}" placeholder="Escriba aquí...">`
+                        }
+            </div>`;
+                }
+            });
+
+            if (htmlInputs === "") {
+                htmlInputs = `<div class="text-center py-3"><p class='text-muted'>Formato no válido.</p></div>`;
+            }
+
+            $("#contenedorCamposDinamicos").html(htmlInputs);
+            $("#modalResponderInfo").modal("show");
+        }
+        // Envía la respuesta consolidada de vuelta al chat
+         function enviarRespuestaConsolidada() {
+            let respuestaFinal = "✅ **INFORMACIÓN PROPORCIONADA:**\n";
+            let completo = true;
+            let archivoAdjunto = null;
+            const $btn = $("#modalResponderInfo .btn-success");
+
+            // 1. Recoger textos
+            $(".input-respuesta").each(function () {
+                const val = $(this).val().trim();
+                const label = $(this).data("label");
+                if (val === "") { $(this).addClass("is-invalid"); completo = false; }
+                else { $(this).removeClass("is-invalid"); respuestaFinal += `\n* ${label}: ${val}`; }
+            });
+
+            // 2. Recoger Archivo (Foto)
+            $(".input-respuesta-file").each(function () {
+                const label = $(this).data("label");
+                if (this.files.length > 0) {
+                    archivoAdjunto = this.files[0];
+                    respuestaFinal += `\n* ${label}: (Imagen adjunta en este mensaje)`;
+                } else {
+                    $(this).addClass("is-invalid");
+                    completo = false;
+                }
+            });
+
+            if (!completo) {
+                Swal.fire('Atención', 'Por favor complete todos los campos, incluyendo la foto', 'warning');
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("idCanje", getId(state.canjeSeleccionado));
+            formData.append("mensaje", respuestaFinal);
+            if (archivoAdjunto) {
+                formData.append("archivo", archivoAdjunto); // Se envía al mismo Action que el chat normal
+            }
+
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Enviando...');
+
+            $.ajax({
+                url: '@Url.Action("GuardarComentario", "Canjes")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(res) {
+                    if (res.success) {
+                        $("#modalResponderInfo").modal("hide");
+                        actualizarChatSilencioso();
+                    }
+                    $btn.prop('disabled', false).text('Enviar Datos');
+                },
+                error: function() {
+                    $btn.prop('disabled', false).text('Enviar Datos');
+                    Swal.fire('Error', 'No se pudo enviar', 'error');
+                }
+            });
+        }
+    </script>
+}

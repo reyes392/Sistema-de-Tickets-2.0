@@ -64,25 +64,30 @@ namespace Capa_Negocios.Tickets
         {
             var permisos = ObtenerPermisos(idUsuario);
 
-            var rutas = new Dictionary<string, (string, string)>
-                {
+            //var rutas = new Dictionary<string, (string, string)>
+            //    {
 
-                    { "USUARIOS_VER", ("Usuarios", "Home") }, // Acción Usuarios() en HomeController
-                    { "INDEX_VER", ("Index", "Home") },       // Acción Index() en HomeController
-                    { "PERMISOS_VER", ("Permisos", "Home") } , // Acción Permisos() en HomeController
-                   { "ROLES_VER", ("RolesyPermisos", "Home") } , // Acción Permisos() en HomeController
-                     { "ROLES_USUARIOS_VER", ("RolesyPermisos", "Home") },  // Acción Permisos() en HomeController
-                      { "TICKET_VER", ("Tickets", "Home") },  // Acción Permisos() en HomeController
-                };
+            //        { "USUARIOS_VER", ("Usuarios", "Home") }, // Acción Usuarios() en HomeController
+            //        { "INDEX_VER", ("Index", "Home") },       // Acción Index() en HomeController
+            //        { "PERMISOS_VER", ("Permisos", "Home") } , // Acción Permisos() en HomeController
+            //       { "ROLES_VER", ("RolesyPermisos", "Home") } , // Acción Permisos() en HomeController
+            //         { "ROLES_USUARIOS_VER", ("RolesyPermisos", "Home") },  // Acción Permisos() en HomeController
+            //          { "TICKET_VER", ("Tickets", "Home") },  // Acción Permisos() en HomeController
+            //            { "CANJES_VER", ("Canjes", "Canjes") },  // Acción Permisos() en HomeController
+            //    };
 
-            foreach (var permiso in permisos)
+            //foreach (var permiso in permisos)
+            //{
+            //    if (rutas.ContainsKey(permiso))
+            //    {
+            //        return rutas[permiso];
+            //    }
+            //}
+            // Si tiene CUALQUIER permiso en el sistema, lo mandamos al Index
+            if (permisos.Any())
             {
-                if (rutas.ContainsKey(permiso))
-                {
-                    return rutas[permiso];
-                }
+                return ("Index", "Home");
             }
-
             return ("SinAcceso", "Home");
         }
 
