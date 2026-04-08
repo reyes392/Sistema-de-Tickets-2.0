@@ -231,9 +231,31 @@
                 </div>
 
                 @* Pestaña Adjuntos *@
+                @*<div class="tab-pane fade" id="adjuntosTab">
+            <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
+            <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+        </div>*@
                 <div class="tab-pane fade" id="adjuntosTab">
-                    <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
+                    <h6 class="fw-bold mb-3">Archivos cargados al reclamo:</h6>
+
                     <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+
+                    <hr />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase text-primary">
+                            <i class="fas fa-paperclip"></i> Agregar más adjuntos
+                        </label>
+                        <input type="file" id="fAdjuntoNuevoReclamo" class="form-control" multiple
+                               accept="image/*,video/mp4,video/x-m4v,video/*,.pdf,.doc,.docx,.xls,.xlsx" />
+                        <div class="form-text" style="font-size: 0.75rem;">
+                            Puedes agregar más archivos a este reclamo.
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary w-100" onclick="subirAdjuntoExistenteReclamo()">
+                        <i class="fas fa-upload"></i> Subir Adjuntos
+                    </button>
                 </div>
             </div>
         </div>
@@ -280,7 +302,7 @@
                 @* ---  --- *@
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
-                    <textarea id="nuevoProblema" class="form-control" rows="3" placeholder="Detalla lo que está ocurriendo..." maxlength="500"></textarea>
+                    <textarea id="nuevoProblema" class="form-control border-danger" rows="3" placeholder="Detalla lo que está ocurriendo..." maxlength="500"></textarea>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase text-primary">
@@ -385,7 +407,7 @@
             });
         }
 
-     
+
         function refrescarTablaReclamos() {
             $.get(window.location.href, function (data) {
                 const nuevoContenido = $(data).find("#tblReclamos tbody").html();
@@ -684,24 +706,50 @@
 
         function abrirModalNuevo() { $("#modalNuevoReclamo").modal("show"); }
 
+        //function crearReclamo() {
+        //    // Validar que el problema no esté vacío antes de enviar
+        //    if ($("#nuevoProblema").val().trim() === "") {
+        //        Swal.fire('Atención', 'Por favor describe el problema', 'warning');
+        //        return;
+        //    }
+
+        //    const reclamo = {
+        //        IdReclamo: 0,
+        //        IdTipoIncidencia: parseInt($("#cboIncidencia").val()),
+        //        // Corregidos para que coincidan con los id del HTML:
+        //        Nrequisa: $("#Nrequisa").val(),
+        //        FechaRequisa: $("#FechaRequisa").val(),
+        //        Problema: $("#nuevoProblema").val(),
+        //        IdEstado: 3
+        //    };
+
+        //    console.log("Datos a enviar:", reclamo); // Para que veas en la consola si se armó bien
+        //    enviarDatos(reclamo, "INSERT", "#fArchivos");
+        //}
         function crearReclamo() {
-            // Validar que el problema no esté vacío antes de enviar
+            // 1. Obtener referencia al botón de guardar del modal
+            const $btnGuardar = $("#modalNuevoReclamo").find("button[onclick='crearReclamo()']");
+
+            // 2. Validaciones básicas antes de bloquear
             if ($("#nuevoProblema").val().trim() === "") {
                 Swal.fire('Atención', 'Por favor describe el problema', 'warning');
                 return;
             }
 
+            // 3. Bloquear botón y mostrar estado de carga
+            $btnGuardar.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+            // 4. Armar el objeto (usando tus IDs de Reclamos)
             const reclamo = {
                 IdReclamo: 0,
                 IdTipoIncidencia: parseInt($("#cboIncidencia").val()),
-                // Corregidos para que coincidan con los id del HTML:
                 Nrequisa: $("#Nrequisa").val(),
                 FechaRequisa: $("#FechaRequisa").val(),
                 Problema: $("#nuevoProblema").val(),
                 IdEstado: 3
             };
 
-            console.log("Datos a enviar:", reclamo); // Para que veas en la consola si se armó bien
+            // 5. Enviar (Se cerrará el modal y se limpiará al tener éxito)
             enviarDatos(reclamo, "INSERT", "#fArchivos");
         }
 
@@ -847,6 +895,84 @@
             // Opcional: Ocultar el botón de guardar si ya está cerrado
             $("#btnGuardarReclamo").hide();
         }
+
+       function subirAdjuntoExistenteReclamo() {
+            if (!reclamoSeleccionado) {
+                Swal.fire('Aviso', 'Primero selecciona un reclamo.', 'warning');
+                return;
+            }
+
+            let files = $("#fAdjuntoNuevoReclamo")[0].files;
+
+            if (!files || files.length === 0) {
+                Swal.fire('Aviso', 'Selecciona al menos un archivo.', 'warning');
+                return;
+            }
+
+            // IMPORTANTE: armamos el mismo objeto que usas al actualizar
+            const reclamoData = {
+                IdReclamo: reclamoSeleccionado.IdReclamo || reclamoSeleccionado.idReclamo,
+                Nrequisa: reclamoSeleccionado.Nrequisa || reclamoSeleccionado.nrequisa,
+                FechaRequisa: reclamoSeleccionado.FechaRequisa || reclamoSeleccionado.fechaRequisa,
+                IdTipoIncidencia: reclamoSeleccionado.IdTipoIncidencia || reclamoSeleccionado.idTipoIncidencia || 0,
+                Problema: $("#txtDetalleProblema").val().trim(),
+                Resolucion: $("#txtResolucion").val().trim(),
+                IdEstado: reclamoSeleccionado.IdEstado || reclamoSeleccionado.idEstado || 5,
+                IdUsuarioAsignado: reclamoSeleccionado.IdUsuarioAsignado || reclamoSeleccionado.idUsuarioAsignado || idUsuarioLogueado
+            };
+
+            let formData = new FormData();
+            formData.append("Accion", "UPDATE");
+
+            // Enviamos TODO el objeto reclamo
+            for (let key in reclamoData) {
+                formData.append("reclamos." + key, reclamoData[key]);
+            }
+
+            // Adjuntamos archivos
+            for (let i = 0; i < files.length; i++) {
+                formData.append("archivos", files[i]);
+            }
+
+            Swal.fire({
+                title: 'Subiendo archivos...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("GuardarReclamo", "ReclamosBodega")',
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    Swal.close();
+
+                    if (res.success) {
+                        Swal.fire('Éxito', 'Archivos subidos correctamente.', 'success');
+
+                        $("#fAdjuntoNuevoReclamo").val("");
+
+                        // refresca adjuntos
+                        cargarAdjuntos(reclamoData.IdReclamo);
+
+                        // opcional: refresca el detalle con los datos actuales
+                        reclamoSeleccionado = {
+                            ...reclamoSeleccionado,
+                            ...reclamoData
+                        };
+                    } else {
+                        Swal.fire('Error', res.mensaje || 'No se pudieron subir los archivos.', 'error');
+                    }
+                },
+                error: function () {
+                    Swal.close();
+                    Swal.fire('Error', 'Ocurrió un error en el servidor.', 'error');
+                }
+            });
+        }
+
     </script>
 }
 

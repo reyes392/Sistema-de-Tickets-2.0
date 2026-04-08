@@ -12,6 +12,7 @@ namespace Capa_Entidad.Anulaciones
         public string? UsuarioSolicitador { get; set; }
         public string? Incidencia { get; set; }
         public string? Caja { get; set; }
+        public string? DescripcionProblema { get; set; } // NUEVO
         public string? Resolucion { get; set; }
         public string? Estado { get; set; }
         public string? UsuarioAsignado { get; set; }

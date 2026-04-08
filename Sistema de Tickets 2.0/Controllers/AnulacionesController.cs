@@ -98,62 +98,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
             return View(lista);
         }
-        //[Permiso("ANULACIONES_CREAR_EDITAR")]
-        //[HttpPost]
-        //public IActionResult GuardarAnulacion(E_Anulaciones anulacion, string Accion, List<IFormFile> archivos)
-        //{
-        //    // 1. Recuperamos el ID del usuario desde la Sesión
-        //    int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
 
-        //    if (idUsuarioSesion == null)
-        //    {
-        //        return Json(new { success = false, mensaje = "La sesión ha expirado. Por favor, inicie sesión nuevamente." });
-        //    }
-
-        //    // 2. Si es un INSERT, asignamos el ID del usuario de la sesión como solicitante
-        //    if (Accion == "INSERT")
-        //    {
-        //        anulacion.IdUsuarioSolicitud = idUsuarioSesion.Value;
-        //    }
-
-        //    // 3. Guardamos el Ticket (Recuerda que ahora el SP devuelve el ID generado en tickets.IdTicket)
-        //    bool resultado = _anulaciones.Guardar(anulacion, Accion, out string mensaje);
-
-        //    //4.Lógica de Archivos: Solo si el ticket se guardó bien y vienen archivos
-        //    if (resultado && archivos != null && archivos.Count > 0)
-        //    {
-        //        try
-        //        {
-        //            // Ruta física: wwwroot/uploads/reclamos/
-        //            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "anulacion");
-
-        //            foreach (var file in archivos)
-        //            {
-        //                // Guardar el archivo físico usando tu Capa de Negocio de archivos
-        //                string nombreSistema = _archivos.GuardarFisico(file, folderPath);
-
-        //                // Registrar la referencia en la base de datos
-        //                var entidadArchivo = new E_Archivos
-        //                {
-        //                    IdReferencia = anulacion.IdAnulacion, // El ID que devolvió el SP
-        //                    NombreOriginal = file.FileName,
-        //                    NombreSistema = nombreSistema,
-        //                    Extension = Path.GetExtension(file.FileName),
-        //                    Ruta = "/uploads/anulacion/" + nombreSistema
-        //                };
-
-        //                _archivos.RegistrarEnBaseDatos(entidadArchivo);
-        //            }
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            // Opcional: Podrías acumular un mensaje de error si los archivos fallan pero el ticket no
-        //            mensaje += " (Aviso: El reclamo se guardó pero hubo problemas con los archivos: " + ex.Message + ")";
-        //        }
-        //    }
-
-        //    return Json(new { success = resultado, mensaje = mensaje });
-        //}
         [Permiso("ANULACIONES_CREAR_EDITAR")]
         [HttpPost]
         public IActionResult GuardarAnulacion(E_Anulaciones anulacion, string Accion, List<IFormFile> archivos)

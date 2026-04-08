@@ -166,7 +166,14 @@
                         <div class="col-6 small"><strong>Técnico:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
                         <div class="col-6 small"><strong>Caja:</strong> <span id="txtCaja" class="d-block text-muted"></span></div>
                     </div>
-
+                    <div class="mb-3">
+                        <label class="fw-bold small">Observaciones Iniciales:</label>
+                        <textarea id="txtDetalleProblema" class="form-control bg-light" rows="3" readonly></textarea>
+                    </div>
+                    @*<div class="mb-3">
+            <label class="fw-bold small text-danger">Descripción del Problema:</label>
+            <textarea id="txtDetalleProblema" class="form-control border-danger" rows="4"></textarea>
+        </div>*@
                     <div class="mb-3">
                         <label class="fw-bold small text-success">Resolución Técnica:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
@@ -249,6 +256,13 @@
                             <option value="@item.IdCaja">@item.Descripcion</option>
                         }
                     </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase text-danger">
+                        <i class="fas fa-exclamation-circle"></i> Descripción del Problema
+                    </label>
+                    <textarea id="txtDescripcionProblemaNuevo" class="form-control border-danger" rows="4"
+                              placeholder="Describe el problema de la anulación..."></textarea>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase text-primary">
@@ -501,7 +515,12 @@
             $("#lblModif").text(formatearFecha(anulacion.modificacion || anulacion.Modificacion));
 
             // IMPORTANTE: Usar .val() para que el textarea se refresque correctamente
+            $("#txtDetalleProblema").val(    anulacion.descripcionProblema ||
+                anulacion.DescripcionProblema ||
+                anulacion.descripcionproblema ||
+                "");
             $("#txtResolucion").val(anulacion.resolucion || anulacion.Resolucion || "");
+         
 
             // Badge de estado
             let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
@@ -731,12 +750,18 @@
         function abrirModalNuevo() { $("#modalNuevoTicket").modal("show"); }
 
         function crearTicket() {
+            const descripcion = $("#txtDescripcionProblemaNuevo").val().trim();
 
+            if (descripcion === "") {
+                Swal.fire("Atención", "Debes escribir la descripción del problema.", "warning");
+                return;
+            }
 
             const anulacion = {
                 idAnulacion: 0,
                 IdIncidencias: parseInt($("#cboIncidencia").val()),
                 IdCaja: parseInt($("#cboCaja").val()),
+                DescripcionProblema: descripcion,
                 IdEstado: 3
             };
 
@@ -750,9 +775,10 @@
             const res = $("#txtResolucion").val().trim();
             const nuevoEstadoId = (res !== "") ? 4 : 5;
             const nuevoEstadoTexto = (res !== "") ? "Cerrado" : "En Proceso"; // <--- Agregamos esto
-
+           const descripcion = $("#txtDetalleProblema").val().trim();
             const Data = {
                 IdAnulacion: Seleccionado.IdAnulacion || Seleccionado.idAnulacion,
+                DescripcionProblema: descripcion,
                 Resolucion: res,
                 IdEstado: nuevoEstadoId,
                 Estado: nuevoEstadoTexto, // <--- Lo incluimos en la data

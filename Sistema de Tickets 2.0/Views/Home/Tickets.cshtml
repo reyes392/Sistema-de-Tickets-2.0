@@ -78,6 +78,50 @@
     }
 </style>
 
+@if (ViewBag.RolUsuario == 1) // Cambia el 1 por el ID que corresponda a "Administrador"
+{
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-warning text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">Total Abiertos</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-abiertos">
+                            @Model.Count(t => t.Estado == "Pendiente")
+                        </h2>
+                    </div>
+                    <i class="fas fa-folder-open fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-info text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">En Proceso</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-proceso">
+                            @Model.Count(t => t.Estado == "En Proceso")
+                        </h2>
+                    </div>
+                    <i class="fas fa-spinner fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        @*<div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-success text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">Cerrados Hoy</h6>
+                        <h2 class="mb-0 fw-bold">
+                            @Model.Count(t => t.Estado == "Cerrado")
+                        </h2>
+                    </div>
+                    <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>*@
+    </div>
+}
 <div class="container-fluid mt-3">
     <div class="row">
         @* --- LISTADO DE TICKETS --- *@
@@ -97,7 +141,9 @@
                             <th>Incidencia</th>
                             <th>Urgencia</th>
                             <th>Fecha</th>
+
                             <th>Estado</th>
+                            <th>Atendido por:</th>
                             <th class="text-center">Acción</th>
                         </tr>
                     </thead>
@@ -120,6 +166,7 @@
                                         @t.Estado
                                     </span>
                                 </td>
+                                <td>@t.UsuarioAsignado</td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-outline-primary btn-ver" data-info='@Json.Serialize(t)'>
                                         <i class="fas fa-eye"></i> Ver
@@ -212,10 +259,39 @@
                 </div>
 
                 @* Pestaña Adjuntos *@
+                @*<div class="tab-pane fade" id="adjuntosTab">
+                        <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
+                        <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+                    </div>*@
+
                 <div class="tab-pane fade" id="adjuntosTab">
-                    <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
+                    <h6 class="fw-bold mb-3">Archivos del ticket:</h6>
+
                     <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase text-primary">
+                            <i class="fas fa-paperclip"></i> Subir nuevo archivo
+                        </label>
+
+                        <input type="file" id="fAdjuntoNuevo" class="form-control" multiple
+                               accept="image/*,video/mp4,video/x-m4v,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar" />
+
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="subirAdjuntoExistente()">
+                                <i class="fas fa-upload"></i> Subir archivo
+                            </button>
+                        </div>
+
+                        <div class="form-text" style="font-size: 0.75rem;">
+                            Puedes agregar archivos adicionales a este ticket.
+                        </div>
+                    </div>
+
+                    <hr />
+
                 </div>
+
+
             </div>
         </div>
 
@@ -258,7 +334,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
-                    <textarea id="nuevoProblema" class="form-control" rows="3" placeholder="Detalla lo que está ocurriendo..."></textarea>
+                    <textarea id="nuevoProblema" class="form-control border-danger" rows="3" placeholder="Detalla lo que está ocurriendo..."></textarea>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase text-primary">
@@ -298,7 +374,7 @@
         const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
 
 
- 
+
 
 
         $(document).ready(function () {
@@ -329,7 +405,7 @@
             // 2. Ejecutar revisiones iniciales
             actualizarVersionBaseDatos();
             sincronizarEstadosChatMasivo(); // Reemplaza al antiguo .each()
-
+            actualizarContadoresCards();
             // 3. Configurar Monitores (Timers)
             setInterval(verificarCambiosTickets, 10000);
             setInterval(sincronizarEstadosChatMasivo, 6000); // El monitor ahora es masivo
@@ -438,7 +514,7 @@
                     versionTicketsActual = nuevaVersion;
 
                     refrescarTablaTickets(); // Actualiza la tabla sin F5
-
+                    actualizarContadoresCards();
                     // Notificamos visualmente en la pestaña solo si no es el usuario que está mirando el detalle
                     if (!intervaloPestaña) {
                         intervaloPestaña = setInterval(() => {
@@ -471,6 +547,7 @@
                 const nuevoContenido = $(data).find("#tblTickets tbody").html();
                 // Lo reemplazamos en nuestra tabla visible
                 $("#tblTickets tbody").html(nuevoContenido);
+                actualizarContadoresCards();
                 console.log("Tabla actualizada dinámicamente.");
             });
         }
@@ -509,88 +586,7 @@
             }
         });
 
-       //function verDetalle(ticket) {
-       //     if (!ticket) return;
-       //     if (chatTimer) clearInterval(chatTimer);
-
-       //     // --- LIMPIEZA FORZADA DE CAMPOS ---
-       //     // Esto asegura que no veas lo del ticket anterior mientras carga el nuevo
-       //     $("#txtResolucion").val("");
-       //     $("#txtDetalleProblema").val("");
-       //     $("#chatBox").html("");
-
-       //     ticketSeleccionado = ticket;
-
-       //     $("#seccionDetalle").show();
-       //     $("#detalleVacio").hide();
-
-       //     // Reset a la primera pestaña (Información)
-       //     const firstTab = new bootstrap.Tab(document.querySelector('#ticketTabs button[data-bs-target="#info"]'));
-       //     firstTab.show();
-
-       //     const id = ticket.idTicket || ticket.IdTicket;
-       //     const estado = ticket.estado || ticket.Estado;
-       //     const idAsignado = ticket.idUsuarioAsignado || ticket.IdUsuarioAsignado;
-       //     const esStaff = (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3);
-
-       //     const formatearFecha = (f) => {
-       //         if (!f) return "N/A";
-       //         let d = new Date(f);
-       //         return isNaN(d) ? f : d.toLocaleString();
-       //     };
-
-       //     // Llenado de etiquetas (Usamos .text para labels y .val para textareas)
-       //     $("#lblIdTicket").text(id);
-       //     $("#txtSolicitante").text(ticket.ususarioSolicitador || ticket.UsusarioSolicitador || "N/A");
-       //     $("#txtCategoria").text(ticket.categoria || ticket.Categoria || "N/A");
-       //     $("#txtIncidencia").text(ticket.incidencia || ticket.Incidencia || "N/A");
-       //     $("#txtUrgencia").text(ticket.nivelUrgencia || ticket.NivelUrgencia || "N/A");
-       //     $("#txtCaja").text(ticket.caja || ticket.Caja || "N/A");
-       //     $("#txtAsignado").text(ticket.usuarioAsignado || ticket.UsuarioAsignado || "N/A");
-       //     $("#lblRegistro").text(formatearFecha(ticket.registro || ticket.Registro));
-       //     $("#lblModif").text(formatearFecha(ticket.modificacion || ticket.Modificacion));
-
-       //     // IMPORTANTE: Usar .val() para que el textarea se refresque correctamente
-       //     $("#txtDetalleProblema").val(ticket.problema || ticket.Problema || "N/A");
-       //     $("#txtResolucion").val(ticket.resolucion || ticket.Resolucion || "");
-
-       //     // Badge de estado
-       //     let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
-       //     $("#badgeEstado").text(estado).removeClass("bg-warning bg-info bg-success text-dark").addClass(colorClass);
-
-
-
-       //    //// --- LÓGICA PARA DESHABILITAR CHAT SI EL TICKET ESTÁ CERRADO ---
-       //    if (estado === "Cerrado") {
-       //        /*  $("#txtMensajeChat").prop("disabled", true).val("").attr("placeholder", "Caso cerrado - No se admiten más mensajes");*/
-       //        bloquearChatVisualmente();
-       //        $(".btn-primary[onclick='enviarComentario()']").prop("disabled", true);
-       //        $("#fArchivoChat").prop("disabled", true); // También deshabilitamos el input de archivos
-       //        $(".fa-paper-plane").closest("button").addClass("btn-secondary").removeClass("bg-primary"); // Cambio visual opcional
-       //    } else {
-       //        $("#txtMensajeChat").prop("disabled", false).attr("placeholder", "Escribe un comentario...");
-       //        $(".btn-primary[onclick='enviarComentario()']").prop("disabled", false);
-       //        $("#fArchivoChat").prop("disabled", false);
-       //        $(".fa-paper-plane").closest("button").addClass("btn-primary").removeClass("btn-secondary");
-       //    }
-
-
-       //     // Lógica de Seguridad para edición
-       //     let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 1 || idAsignado === idUsuarioLogueado));
-       //     if (puedeEditar) {
-       //         $("#btnGuardarTicket").show();
-       //         $("#txtResolucion, #txtDetalleProblema").prop("readonly", false).removeClass("bg-light");
-       //     } else {
-       //         $("#btnGuardarTicket").hide();
-       //         $("#txtResolucion, #txtDetalleProblema").prop("readonly", true).addClass("bg-light");
-       //     }
-
-       //    // Carga de chat y adjuntos
-       //    ultimaCantidadComentarios = 0;
-       //     actualizarChatSilencioso();
-       //     marcarComoLeido();
-       //     cargarAdjuntos(id);
-        // }
+   
 
         function verDetalle(ticket) {
             if (!ticket) return;
@@ -677,7 +673,7 @@
         }
         // --- 7. FUNCIONES DE CHAT ---
 
-   
+
         function marcarComoLeido() {
             if (!ticketSeleccionado) return;
             const idTicket = ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket;
@@ -832,7 +828,7 @@
             });
         }
         function monitorearMensajesNuevos() {
-       
+
             sincronizarEstadosChatMasivo();
         }
 
@@ -875,8 +871,31 @@
         }
 
         function abrirModalNuevo() { $("#modalNuevoTicket").modal("show"); }
+        //function crearTicket() {
+        //    const ticket = { IdTicket: 0, IdCaja: parseInt($("#cboCaja").val()), IdIncidencias: parseInt($("#cboIncidencia").val()), Problema: $("#nuevoProblema").val(), IdEstado: 3 };
+        //    enviarDatos(ticket, "INSERT", "#fArchivos");
+        //}
         function crearTicket() {
-            const ticket = { IdTicket: 0, IdCaja: parseInt($("#cboCaja").val()), IdIncidencias: parseInt($("#cboIncidencia").val()), Problema: $("#nuevoProblema").val(), IdEstado: 3 };
+            // 1. Obtener referencia al botón de guardar del modal
+            const $btnGuardar = $("#modalNuevoTicket").find("button[onclick='crearTicket()']");
+
+            // 2. Validaciones básicas antes de bloquear (opcional pero recomendado)
+            if ($("#nuevoProblema").val().trim() === "") {
+                Swal.fire('Atención', 'Por favor describa el problema', 'warning');
+                return;
+            }
+
+            // 3. Bloquear botón y mostrar estado de carga
+            $btnGuardar.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+            const ticket = {
+                IdTicket: 0,
+                IdCaja: parseInt($("#cboCaja").val()),
+                IdIncidencias: parseInt($("#cboIncidencia").val()),
+                Problema: $("#nuevoProblema").val(),
+                IdEstado: 3
+            };
+
             enviarDatos(ticket, "INSERT", "#fArchivos");
         }
 
@@ -929,6 +948,7 @@
                                 Swal.fire('Éxito', 'Ticket actualizado', 'success').then(() => {
                                     refrescarTablaTickets();
                                     sincronizarEstadosChatMasivo();
+                                    actualizarContadoresCards();
                                     // PASO CLAVE: Pasamos el objeto con el NUEVO estado para que verDetalle lo oculte
                                     // --- LO NUEVO: Si el estado nuevo es Cerrado (ID 4), bloqueamos el chat YA ---
                                     if (nuevoEstadoId === 4) {
@@ -1009,6 +1029,8 @@
                 }
             }
         });
+
+
         function bloquearChatVisualmente() {
             $("#txtMensajeChat").prop("disabled", true)
                 .val("")
@@ -1021,5 +1043,114 @@
             $("#btnGuardarTicket").hide();
         }
 
+
+
+        function subirAdjuntoExistente() {
+            if (!ticketSeleccionado) return;
+
+            let files = $("#fAdjuntoNuevo")[0].files;
+
+            if (!files || files.length === 0) {
+                Swal.fire('Aviso', 'Selecciona al menos un archivo.', 'warning');
+                return;
+            }
+
+            const res = $("#txtResolucion").val().trim();
+            const nuevoEstadoId = (res !== "") ? 4 : 5;
+            const nuevoEstadoTexto = (res !== "") ? "Cerrado" : "En Proceso";
+
+            const ticketData = {
+                IdTicket: ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket,
+                Problema: $("#txtDetalleProblema").val().trim(),
+                Resolucion: res,
+                IdEstado: nuevoEstadoId,
+                Estado: nuevoEstadoTexto,
+                IdIncidencias: ticketSeleccionado.IdIncidencias || ticketSeleccionado.idIncidencias,
+                IdCaja: ticketSeleccionado.IdCaja || ticketSeleccionado.idCaja,
+                IdUsuarioAsignado: ticketSeleccionado.IdUsuarioAsignado || ticketSeleccionado.idUsuarioAsignado || idUsuarioLogueado,
+                UsuarioAsignado: ticketSeleccionado.UsuarioAsignado || ticketSeleccionado.usuarioAsignado || nombreTecnicoLogueado
+            };
+
+            Swal.fire({
+                title: '¿Subir adjuntos?',
+                text: 'Los archivos se agregarán al ticket actual.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, subir'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Subiendo archivos...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    let formData = new FormData();
+                    formData.append("Accion", "UPDATE");
+
+                    // Enviamos toda la data del ticket, igual que guardarCambiosTicket()
+                    for (let key in ticketData) {
+                        formData.append("tickets." + key, ticketData[key]);
+                    }
+
+                    // Adjuntamos archivos
+                    for (let i = 0; i < files.length; i++) {
+                        formData.append("archivos", files[i]);
+                    }
+
+                    $.ajax({
+                        url: '@Url.Action("GuardarTickets", "Home")',
+                        type: "POST",
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (response) {
+                            Swal.close();
+
+                            if (response.success) {
+                                Swal.fire('Éxito', 'Archivos subidos correctamente.', 'success').then(() => {
+                                    $("#fAdjuntoNuevo").val("");
+                                    cargarAdjuntos(ticketData.IdTicket);
+                                    refrescarTablaTickets();
+
+                                    // Refrescamos el detalle actual sin perder estado
+                                    verDetalle(ticketData);
+                                });
+                            } else {
+                                Swal.fire('Error', response.mensaje || 'No se pudieron subir los archivos.', 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.close();
+                            Swal.fire('Error', 'Ocurrió un error en el servidor.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+        function actualizarContadoresCards() {
+            // Si el contenedor de las cards no existe en el HTML, salimos de la función
+            if ($('#card-total-abiertos').length === 0) return;
+
+            let abiertos = 0;
+            let proceso = 0;
+            let cerrados = 0;
+
+            // Recorremos la tabla para contar los estados actuales
+            $("#tblTickets tbody tr").each(function () {
+                // Buscamos el texto dentro del badge de estado en cada fila
+                let estado = $(this).find(".badge").text().trim().toLowerCase();
+
+                if (estado === "pendiente") abiertos++;
+                else if (estado === "en proceso") proceso++;
+                else if (estado === "cerrado") cerrados++;
+            });
+
+            // Asignamos los valores a las cards
+            $("#card-total-abiertos").text(abiertos);
+            $("#card-total-proceso").text(proceso);
+            // Si tienes un ID para la card de cerrados, agrégalo aquí:
+            // $("#card-total-cerrados").text(cerrados); 
+        }
     </script>
 }

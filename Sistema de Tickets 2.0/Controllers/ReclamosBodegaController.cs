@@ -97,7 +97,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
             // LÓGICA DE FILTRADO SOLICITADA:
             // Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
-            if (idRolLogueado != 1 && idRolLogueado != 3)
+            if (idRolLogueado != 1 && idRolLogueado != 4)
             {
                 lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
             }

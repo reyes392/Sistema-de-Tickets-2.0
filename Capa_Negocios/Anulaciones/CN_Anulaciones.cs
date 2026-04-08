@@ -39,6 +39,11 @@ namespace Capa_Negocios.Anulaciones
 
                 obj.IdEstado = 3; // Estado inicial: Pendiente
             }
+            if (string.IsNullOrWhiteSpace(obj.DescripcionProblema))
+            {
+                mensaje = "La descripción del problema es obligatoria.";
+                return false;
+            }
 
             // --- LÓGICA PARA ACTUALIZACIONES (UPDATE) ---
             else if (accion == "UPDATE")
