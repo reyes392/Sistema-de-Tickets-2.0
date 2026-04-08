@@ -1,26 +1,25 @@
 ﻿@model List<Capa_Entidad.Canjes.E_AsignacionCanjes>
 @using Capa_Entidad.Canjes
 @{
-    ViewData["Title"] = "AsignacionSucursales";
+    ViewData["Title"] = "Asignación Canjes";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <div class="card shadow mb-4">
     <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
-        <h6 class="m-0 font-weight-bold">Configuración de Asignaciones (Técnico - Solicitante)</h6>
+        <h6 class="m-0 font-weight-bold">Asignaciones Auditor de Canjes</h6>
         <button class="btn btn-light btn-sm" onclick="abrirModal()">
             <i class="fas fa-plus"></i> Nueva Asignación
         </button>
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="tblAsignaciones" width="100%" cellspacing="0">
+            <table class="table table-bordered table-hover" id="tblAsignaciones" width="100%">
                 <thead class="thead-light">
                     <tr>
-                        <th>Técnico (Atiende)</th>
-                        <th>Solicitante (Origen)</th>
-                        <th>Fecha Asignación</th>
-                        <th style="width: 50px">Acciones</th>
+                        <th style="width: 80px">ID</th>
+                        <th>Auditor de Canjes</th>
+                        <th style="width: 150px" class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -30,36 +29,30 @@
 </div>
 
 <div class="modal fade" id="modalAsignacion" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Configurar Nueva Relación</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Configurar Relación Canjes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="formAsignacion">
                     <div class="mb-4">
-                        <label class="form-label font-weight-bold">1. Seleccione Técnico Encargado:</label>
+                        <label class="form-label font-weight-bold">1. Seleccione Auditor:</label>
                         <select class="form-select select2" id="cboTecnico" required style="width:100%">
-                            <option value="">-- Seleccione Técnico --</option>
+                            <option value="">-- Seleccione Auditor --</option>
                             @foreach (var item in ViewBag.Operador)
                             {
                                 <option value="@item.IdUsuario">@item.Nombres @item.Apellidos</option>
                             }
                         </select>
                     </div>
-                    <hr />
-                    <div class="mb-2">
-                        <label class="form-label font-weight-bold mb-0">2. Marque los Usuarios Solicitantes:</label>
-                    </div>
                     <div class="table-responsive">
-                        <table class="table table-sm table-bordered table-hover w-100" id="tblSolicitantesModal">
+                        <table class="table table-sm table-bordered w-100" id="tblSolicitantesModal">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width: 40px" class="text-center">
-                                        <input type="checkbox" id="checkAll" class="form-check-input">
-                                    </th>
-                                    <th>Nombre del Usuario Solicitante</th>
+                                    <th style="width: 40px" class="text-center"><input type="checkbox" id="checkAll" class="form-check-input"></th>
+                                    <th>Sucursal / Usuario Solicitante</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -76,13 +69,28 @@
                         </table>
                     </div>
                     <div class="mt-2 text-end">
-                        <small class="text-primary fw-bold" id="countSelected">0 usuarios seleccionados</small>
+                        <small class="text-primary fw-bold" id="countSelected">0 seleccionados</small>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="guardarAsignacion()">Guardar Relación</button>
+                <button type="button" class="btn btn-primary" onclick="guardarAsignacion()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalVerDetalles" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-list me-2"></i>Sucursales Asignadas</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6 id="txtNombreTecnicoDetalle" class="fw-bold text-primary mb-3"></h6>
+                <ul class="list-group shadow-sm" id="listaSucursales"></ul>
             </div>
         </div>
     </div>
@@ -90,153 +98,110 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script>
-       let tablaSolicitantes;
+        let tablaSolicitantes;
 
         $(document).ready(function () {
             $('#tblAsignaciones').DataTable({
-
-                pageLength: 10,
-                lengthMenu: [5, 10, 25, 50],
-
-                language: {
-                    lengthMenu: "Mostrar _MENU_ registros",
-                    zeroRecords: "No se encontraron datos",
-                    info: "Página _PAGE_ de _PAGES_",
-                    infoEmpty: "No hay registros",
-                    infoFiltered: "(filtrado de _MAX_ registros)",
-                    search: "Buscar:",
-                    paginate: {
-                        first: "Primero",
-                        last: "Último",
-                        next: "Siguiente",
-                        previous: "Anterior"
-                    }
-                }
-
+                language: { url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
             });
-            listarAsignaciones();
 
-            // Inicializar tabla del modal SIN paginación
             tablaSolicitantes = $('#tblSolicitantesModal').DataTable({
-                "paging": false,          // <-- AQUÍ QUITAMOS LA PAGINACIÓN
-                "scrollY": "400px",       // Añadimos scroll vertical para que el modal no se deforme
-                "scrollCollapse": true,
-                "info": true,             // Muestra el total de registros
-                "language": {
-                    "url": "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
-                },
-                "columnDefs": [{ "orderable": false, "targets": 0 }]
+                "paging": false, "scrollY": "350px", "scrollCollapse": true,
+                "language": { url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
             });
+
+            listarAsignaciones();
         });
 
-        // Corregir visualización al abrir modal
-        $('#modalAsignacion').on('shown.bs.modal', function () {
-            $('#cboTecnico').select2({
-                dropdownParent: $('#modalAsignacion'),
-                width: '100%'
+        // Lógica de carga agrupada
+        function listarAsignaciones() {
+            $.get('@Url.Action("ListarAgrupado", "Canjes")', function (data) {
+                let tabla = $('#tblAsignaciones').DataTable();
+                tabla.clear();
+                data.forEach(item => {
+                    tabla.row.add([
+                        item.idTecnico,
+                        `<a href="javascript:void(0)" class="fw-bold text-primary" onclick="verDetalles(${item.idTecnico}, '${item.nombreTecnico}')">
+                            <i class="fas fa-search-plus me-2"></i>${item.nombreTecnico}
+                         </a>`,
+                        `<button class="btn btn-primary btn-sm" onclick="editarAsignacion(${item.idTecnico})">
+                            <i class="fas fa-edit"></i> Editar
+                         </button>`
+                    ]);
+                });
+                tabla.draw();
             });
-            // Importante para ajustar el scroll cuando se quita la paginación
-            tablaSolicitantes.columns.adjust().draw();
+        }
+
+        function verDetalles(id, nombre) {
+            $("#txtNombreTecnicoDetalle").text(nombre);
+            $("#modalVerDetalles").modal("show");
+            $.get('@Url.Action("ObtenerDetalleSucursales", "Canjes")', { idTecnico: id }, function (res) {
+                let html = res.map(d => `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-store-alt me-2 text-secondary"></i>${d.sucursal}</span>
+                        <button class="btn btn-sm text-danger border-0" onclick="eliminarIndividual(${d.idAsignacion})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </li>`).join('');
+                $("#listaSucursales").html(html || '<li class="list-group-item">Sin asignaciones</li>');
+            });
+        }
+
+        function editarAsignacion(id) {
+            limpiarTodo();
+            $("#modalAsignacion").modal("show");
+            setTimeout(() => { $("#cboTecnico").val(id).trigger('change'); }, 200);
+        }
+
+        // Al cambiar técnico en modal, marcar los que ya tiene
+        $(document).on("change", "#cboTecnico", function () {
+            const id = $(this).val();
+            $(".chk-solicitante").prop('checked', false);
+            if (id) {
+                $.get('@Url.Action("ObtenerAsignadosPorTecnico", "Canjes")', { idTecnico: id }, function (res) {
+                    res.ids.forEach(id => { $(`.chk-solicitante[value="${id}"]`).prop('checked', true); });
+                    actualizarContador();
+                });
+            }
         });
 
-        // Evento Seleccionar Todos
-        $(document).on("change", "#checkAll", function() {
-            $(".chk-solicitante").prop('checked', $(this).is(':checked'));
-            actualizarContador();
-        });
+        function guardarAsignacion() {
+            const idTecnico = $("#cboTecnico").val();
+            const ids = $(".chk-solicitante:checked").map(function() { return parseInt($(this).val()); }).get();
 
-        // Evento Checkboxes individuales
-        $(document).on("change", ".chk-solicitante", function() {
-            actualizarContador();
-        });
+            $.post('@Url.Action("GuardarMultiple", "Canjes")', { idTecnico: idTecnico, idsSolicitantes: ids }, function (res) {
+                if (res.success) {
+                    $("#modalAsignacion").modal("hide");
+                    listarAsignaciones();
+                    Swal.fire('Éxito', 'Asignaciones actualizadas', 'success');
+                }
+            });
+        }
+
+        function eliminarIndividual(id) {
+            $.post('@Url.Action("Eliminar", "Canjes")', { id: id }, function(res) {
+                if(res.success) {
+                    $("#modalVerDetalles").modal("hide");
+                    listarAsignaciones();
+                }
+            });
+        }
 
         function actualizarContador() {
-            // Al no haber paginación, un selector normal de jQuery funciona perfectamente
-            const cant = $(".chk-solicitante:checked").length;
-            $("#countSelected").text(cant + " usuarios seleccionados");
+            $("#countSelected").text($(".chk-solicitante:checked").length + " seleccionados");
         }
 
         function limpiarTodo() {
             $("#formAsignacion")[0].reset();
             $("#cboTecnico").val(null).trigger('change');
             $(".chk-solicitante").prop('checked', false);
-            $("#checkAll").prop('checked', false);
             actualizarContador();
         }
 
-        function guardarAsignacion() {
-            const idTecnico = $("#cboTecnico").val();
-            const solicitantesIds = [];
-
-            // Capturamos los IDs marcados
-            $(".chk-solicitante:checked").each(function() {
-                solicitantesIds.push(parseInt($(this).val()));
-            });
-
-            if (!idTecnico || solicitantesIds.length === 0) {
-                Swal.fire('Atención', 'Seleccione un técnico y al menos un solicitante.', 'warning');
-                return;
-            }
-
-            $.ajax({
-                url: '@Url.Action("GuardarMultiple", "Canjes")',
-                type: "POST",
-                data: {
-                    idTecnico: idTecnico,
-                    idsSolicitantes: solicitantesIds
-                },
-                traditional: true,
-                success: function (res) {
-                    if (res.success) {
-                        $("#modalAsignacion").modal("hide");
-                        Swal.fire('Éxito', res.mensaje, 'success');
-                        listarAsignaciones();
-                    } else {
-                        Swal.fire('Error', res.mensaje, 'error');
-                    }
-                }
-            });
-        }
-        function listarAsignaciones() {
-            $.get('@Url.Action("Listar", "Canjes")', function (data) {
-                let html = "";
-                data.forEach(item => {
-                    html += `<tr>
-                        <td><i class="fas fa-user-tie me-2 text-primary"></i>${item.nombreUsuarioCanjes}</td>
-                        <td><i class="fas fa-user me-2 text-info"></i>${item.nombreUsuarioSolicitante}</td>
-                        <td>${new Date(item.fechaAsignacion).toLocaleString()}</td>
-                        <td class="text-center">
-                            <button class="btn btn-danger btn-sm" onclick="eliminar(${item.idAsignacion})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>`;
-                });
-                $("#tblAsignaciones tbody").html(html || '<tr><td colspan="4" class="text-center">No hay asignaciones</td></tr>');
-            });
-        }
-
-        function abrirModal() {
-            limpiarTodo();
-            $("#modalAsignacion").modal("show");
-        }
-
-        // Función eliminar (si no la tienes)
-        function eliminar(id) {
-            Swal.fire({
-                title: '¿Eliminar asignación?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, eliminar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.post('@Url.Action("Eliminar", "Canjes")', { id: id }, function(res) {
-                        if(res.success) { listarAsignaciones(); Swal.fire('Eliminado', '', 'success'); }
-                    });
-                }
-            });
-        }
+        function abrirModal() { limpiarTodo(); $("#modalAsignacion").modal("show"); }
+        $(document).on("change", "#checkAll", function() { $(".chk-solicitante").prop('checked', $(this).is(':checked')); actualizarContador(); });
+        $(document).on("change", ".chk-solicitante", function() { actualizarContador(); });
     </script>
 }

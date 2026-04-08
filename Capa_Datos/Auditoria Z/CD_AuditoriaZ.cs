@@ -46,7 +46,9 @@ namespace Capa_Datos.AuditoriaZ
                                 NombreSolicitador = dr["NombreSolicitador"]?.ToString(),
                                 TipoIncidenciaAuditoria = dr["TipoIncidenciaAuditoria"]?.ToString(),
                                 Estado = dr["Estado"]?.ToString(),
-                                NombreAsignado = dr["NombreAsignado"]?.ToString()
+                                NombreAsignado = dr["NombreAsignado"]?.ToString(),
+                                // Mapeo del NOMBRE del modificador para la vista
+                                NombreModificador = dr["NombreModificador"]?.ToString() // <--- LÍNEA NUEVA
                             });
                         }
                     }
@@ -86,7 +88,8 @@ namespace Capa_Datos.AuditoriaZ
                     cmd.Parameters.AddWithValue("@RESOLUCION_PROBLEMA", (object)obj.ResolucionProblema ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ID_ESTADO", obj.IdEstado);
                     cmd.Parameters.AddWithValue("@ID_USUARIO_ASIGNADO", (object)obj.IdUsuarioAsignado ?? DBNull.Value);
-
+                    // Dentro del método Guardar, donde agregas los parámetros:
+                    cmd.Parameters.AddWithValue("@ID_USUARIO_MODIFICADOR", (object)obj.IdUsuarioModificador ?? DBNull.Value);
                     // 4. Parámetros de salida con @
                     cmd.Parameters.Add("@RESULTADO", SqlDbType.Bit).Direction = ParameterDirection.Output;
                     cmd.Parameters.Add("@MENSAJE", SqlDbType.VarChar, 200).Direction = ParameterDirection.Output;

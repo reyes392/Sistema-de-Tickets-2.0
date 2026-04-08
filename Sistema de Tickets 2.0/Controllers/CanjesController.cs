@@ -43,14 +43,66 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
         }
         #endregion
+
         #region ASIGNACIONES DE SUCURSALES A AUDITOR DE CANJES
+        //[Permiso("ASIGNACIONES_VER")]
+        //public IActionResult AsignacionSucursales()
+        //{
+        //    // Llenamos combos para la vista
+        //    ViewBag.Operador = _usuarioNegocio.Listar(); 
+        //    ViewBag.Solicitantes = _usuarioNegocio.Listar();
+        //    return View();
+        //}
         [Permiso("ASIGNACIONES_VER")]
         public IActionResult AsignacionSucursales()
         {
-            // Llenamos combos para la vista
-            ViewBag.Operador = _usuarioNegocio.Listar(); 
+            // Filtramos para que no aparezca "Farmacias Saba" en la lista de Técnicos (Operadores)
+            var usuarios = _usuarioNegocio.Listar()
+                .Where(u => !(u.Nombres.Contains("Farmacias Saba") || u.Apellidos.Contains("Farmacias Saba")))
+                .ToList();
+
+            ViewBag.Operador = usuarios;
             ViewBag.Solicitantes = _usuarioNegocio.Listar();
             return View();
+        }
+
+        [HttpGet]
+        public JsonResult ListarAgrupado()
+        {
+            var lista = _canjesNegocio.Listar();
+            // Agrupamos por técnico de canjes
+            var agrupado = lista.GroupBy(x => new { x.IdUsuarioCanjes, x.NombreUsuarioCanjes })
+                .Select(g => new
+                {
+                    idTecnico = g.Key.IdUsuarioCanjes,
+                    nombreTecnico = g.Key.NombreUsuarioCanjes,
+                    cantidad = g.Count()
+                }).ToList();
+
+            return Json(agrupado);
+        }
+
+        [HttpGet]
+        public JsonResult ObtenerDetalleSucursales(int idTecnico)
+        {
+            var detalle = _canjesNegocio.Listar()
+                .Where(x => x.IdUsuarioCanjes == idTecnico)
+                .Select(x => new {
+                    idAsignacion = x.IdAsignacion, // Asegúrate que el nombre de propiedad coincida con tu E_AsignacionCanjes
+                    sucursal = x.NombreUsuarioSolicitante,
+                    fecha = x.FechaAsignacion.ToString("dd/MM/yyyy HH:mm")
+                }).ToList();
+            return Json(detalle);
+        }
+
+        [HttpGet]
+        public JsonResult ObtenerAsignadosPorTecnico(int idTecnico)
+        {
+            var ids = _canjesNegocio.Listar()
+                .Where(x => x.IdUsuarioCanjes == idTecnico)
+                .Select(x => x.IdUsuarioSolicitante)
+                .ToList();
+            return Json(new { success = true, ids = ids });
         }
         [HttpGet]
         public JsonResult Listar() => Json(_canjesNegocio.Listar());

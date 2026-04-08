@@ -47,13 +47,54 @@ namespace Sistema_de_Tickets_2._0.Controllers
         #endregion
 
         #region ASIGNACIONES DE SUCURSALES A AUDITOR Z
+        //[Permiso("ASIGNACIONES_VER")]
+        //public IActionResult AsignacionSucursales_AuditoriaZ()
+        //{
+        //    // Llenamos combos para la vista
+        //    ViewBag.Operador = _usuario.Listar();
+        //    ViewBag.Solicitantes = _usuario.Listar();
+        //    return View();
+        //}
         [Permiso("ASIGNACIONES_VER")]
         public IActionResult AsignacionSucursales_AuditoriaZ()
         {
-            // Llenamos combos para la vista
-            ViewBag.Operador = _usuario.Listar();
-            ViewBag.Solicitantes = _usuario.Listar();
+            // Filtramos para que no aparezca "Farmacias Saba" en la lista de Técnicos
+            var usuarios = _usuario.Listar()
+                .Where(u => !(u.Nombres.Contains("Farmacias Saba") || u.Apellidos.Contains("Farmacias Saba")))
+                .ToList();
+
+            ViewBag.Operador = usuarios;
+            ViewBag.Solicitantes = _usuario.Listar(); // Aquí puedes decidir si filtrar también o no
             return View();
+        }
+
+        [HttpGet]
+        public JsonResult ListarAgrupado()
+        {
+            var lista = _asignacion.Listar();
+            // Agrupamos por técnico para que en la tabla principal solo salga una fila por persona
+            var agrupado = lista.GroupBy(x => new { x.IdUsuarioAuditoriaZ, x.NombreUsuarioAuditoriaZ })
+                .Select(g => new
+                {
+                    idTecnico = g.Key.IdUsuarioAuditoriaZ,
+                    nombreTecnico = g.Key.NombreUsuarioAuditoriaZ,
+                    cantidad = g.Count() // Opcional: para mostrar cuántas tiene
+                }).ToList();
+
+            return Json(agrupado);
+        }
+
+        [HttpGet]
+        public JsonResult ObtenerDetalleSucursales(int idTecnico)
+        {
+            var detalle = _asignacion.Listar()
+                .Where(x => x.IdUsuarioAuditoriaZ == idTecnico)
+                .Select(x => new {
+                    idAsignacion = x.IdAsignacionZ,
+                    sucursal = x.NombreUsuarioSolicitante,
+                    fecha = x.FechaAsignacion.ToString("dd/MM/yyyy HH:mm")
+                }).ToList();
+            return Json(detalle);
         }
         [HttpGet]
         public JsonResult Listar() => Json(_asignacion.Listar());
@@ -132,57 +173,6 @@ namespace Sistema_de_Tickets_2._0.Controllers
             return View(lista);
         }
 
-        //[Permiso("AUDITORIAZ_CREAR_EDITAR")]
-        //[HttpPost]
-        //public IActionResult GuardarAuditoria(E_AuditoriaZ objeto, string Accion, List<IFormFile> archivos)
-        //{
-        //    int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
-        //    if (idUsuarioSesion == null) return Json(new { success = false, mensaje = "Sesión expirada" });
-
-        //    if (Accion == "INSERT")
-        //    {
-        //        objeto.IdUsuarioSolicitador = idUsuarioSesion.Value;
-        //        objeto.IdEstado = 3;
-        //    }
-        //    else if (Accion == "UPDATE")
-        //    {
-        //        // Si por alguna razón el JS mandó 0, lo recuperamos de la sesión para que pase la validación de la CN
-        //        if (objeto.IdUsuarioSolicitador == 0)
-        //        {
-        //            objeto.IdUsuarioSolicitador = idUsuarioSesion.Value;
-        //        }
-        //    }
-
-        //    // Llama a la capa de negocio
-        //    bool resultado = _negocioAuditoria.Guardar(objeto, out string mensaje);
-
-        //    if (resultado && archivos != null && archivos.Count > 0)
-        //    {
-        //        try
-        //        {
-        //            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "auditoriaZ");
-        //            foreach (var file in archivos)
-        //            {
-        //                string nombreSistema = _negocioAuditoria.GuardarArchivoFisico(file, folderPath);
-        //                var entidadArchivo = new E_Archivos
-        //                {
-        //                    IdReferencia = objeto.IdAuditoriaZ,
-        //                    NombreOriginal = file.FileName,
-        //                    NombreSistema = nombreSistema,
-        //                    Extension = Path.GetExtension(file.FileName),
-        //                    Ruta = "/uploads/auditoriaZ/" + nombreSistema
-        //                };
-        //                _negocioArchivos.RegistrarEnBaseDatos(entidadArchivo);
-        //            }
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            mensaje += " (Aviso: El registro se guardó pero hubo problemas con archivos: " + ex.Message + ")";
-        //        }
-        //    }
-        //    return Json(new { success = resultado, mensaje = mensaje });
-        //}
-
         [Permiso("AUDITORIAZ_CREAR_EDITAR")]
         [HttpPost]
         public IActionResult GuardarAuditoria(E_AuditoriaZ objeto, string Accion, List<IFormFile> archivos)
@@ -191,10 +181,12 @@ namespace Sistema_de_Tickets_2._0.Controllers
             int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
             int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
             if (idUsuarioSesion == null) return Json(new { success = false, mensaje = "Sesión expirada" });
-
+          
             if (Accion == "INSERT")
             {
+               
                 objeto.IdUsuarioSolicitador = idUsuarioSesion.Value;
+                objeto.IdUsuarioModificador = idUsuarioSesion.Value;
                 objeto.IdEstado = 3; // Supongo que 3 es 'Pendiente' o 'Abierto'
             }
             else if (Accion == "UPDATE")
@@ -304,30 +296,55 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
             return Json(new { success = resultado, mensaje = mensaje });
         }
+        //[HttpGet]
+        //public IActionResult ObtenerVersionAuditoria()
+        //{
+        //    try
+        //    {
+        //        // 1. Obtenemos la lista desde la capa de negocio
+        //        var lista = _negocioAuditoria.Listar(0, 0);
+
+        //        // 2. Manejamos el caso de que la lista esté vacía para evitar errores en .Max()
+        //        if (lista == null || !lista.Any())
+        //        {
+        //            return Json("0-0");
+        //        }
+
+        //        // 3. Creamos un "sello" único (Cantidad de registros + ID más alto)
+        //        // Si tienes un campo FechaModificacion, sería incluso mejor usar el Max de esa fecha.
+        //        string version = $"{lista.Count}-{lista.Max(x => x.IdAuditoriaZ)}";
+
+        //        // En .NET Core, Json() permite GET por defecto
+        //        return Json(version);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Retornamos un status 500 o simplemente un string de error para no romper el JS
+        //        return StatusCode(500, "Error al obtener versión");
+        //    }
+        //}
         [HttpGet]
         public IActionResult ObtenerVersionAuditoria()
         {
             try
             {
-                // 1. Obtenemos la lista desde la capa de negocio
-                var lista = _negocioAuditoria.Listar(0, 0);
+                // 1. IMPORTANTE: Recuperar la sesión para que el filtro sea el mismo que en el Index
+                int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+                int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
 
-                // 2. Manejamos el caso de que la lista esté vacía para evitar errores en .Max()
+                // 2. CORRECCIÓN: Pasar los IDs reales, no (0, 0)
+                var lista = _negocioAuditoria.Listar(idLogueado, idRolLogueado);
+
                 if (lista == null || !lista.Any())
                 {
                     return Json("0-0");
                 }
 
-                // 3. Creamos un "sello" único (Cantidad de registros + ID más alto)
-                // Si tienes un campo FechaModificacion, sería incluso mejor usar el Max de esa fecha.
                 string version = $"{lista.Count}-{lista.Max(x => x.IdAuditoriaZ)}";
-
-                // En .NET Core, Json() permite GET por defecto
                 return Json(version);
             }
             catch (Exception ex)
             {
-                // Retornamos un status 500 o simplemente un string de error para no romper el JS
                 return StatusCode(500, "Error al obtener versión");
             }
         }

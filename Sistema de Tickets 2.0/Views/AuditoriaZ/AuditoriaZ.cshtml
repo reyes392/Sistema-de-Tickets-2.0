@@ -148,6 +148,50 @@
         }
     }
 </style>
+@if (ViewBag.RolUsuario == 8) // Cambia el 1 por el ID que corresponda a "Administrador"
+{
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-warning text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">Total Abiertos</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-abiertos">
+                            @Model.Count(t => t.Estado == "Pendiente")
+                        </h2>
+                    </div>
+                    <i class="fas fa-folder-open fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-info text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">En Proceso</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-proceso">
+                            @Model.Count(t => t.Estado == "En Proceso")
+                        </h2>
+                    </div>
+                    <i class="fas fa-spinner fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        @*<div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-success text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase small fw-bold mb-1">Cerrados Hoy</h6>
+                            <h2 class="mb-0 fw-bold">
+                                @Model.Count(t => t.Estado == "Cerrado")
+                            </h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>*@
+    </div>
+}
 <div class="container-fluid mt-3">
     <div class="row">
         @* --- LISTADO DE AUDITORIAS --- *@
@@ -229,6 +273,7 @@
 
                     <div class="row g-2 mb-4 border-bottom pb-3">
                         <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
+                        <div class="col-6 small"><strong>Modificador:</strong> <span id="txtModificador" class="d-block text-muted"></span></div>
                         <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
                         <div class="col-6 small"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
                         <div class="col-6 small"><strong>Registro:</strong> <span id="lblRegistro" class="d-block text-muted"></span></div>
@@ -255,7 +300,7 @@
                 </div>
 
                 @* Pestaña Chat *@
-    
+
                 <div class="tab-pane fade" id="chatTab">
                     <div id="chatBox"></div>
 
@@ -391,7 +436,7 @@
                 }
             }
         }
-      
+
 
         // --- 3. INICIALIZACIÓN ---
         $(document).ready(function () {
@@ -412,7 +457,7 @@
                 marcarComoLeido();
             });
             monitorearMensajesNuevos();
-
+            actualizarContadoresCards();
             // Intervalos
             setInterval(verificarCambiosAuditoria, 30000);
             setInterval(monitorearMensajesNuevos, 6000);
@@ -432,7 +477,7 @@
             });
         }
 
-  
+
 
         // --- 4. MODIFICAR REFRESCO DE TABLA ---
         function refrescarTablaAuditorias() {
@@ -442,6 +487,7 @@
                     $("#tblAuditorias tbody").html(nuevoContenido);
                     // Ejecutar monitoreo inmediatamente para aplicar badges según localStorage
                     monitorearMensajesNuevos();
+                    actualizarContadoresCards();
                 }
             });
         }
@@ -460,7 +506,8 @@
             }
 
             // LÓGICA DE AUTO-PROCESO: Si está Pendiente y soy Auditor (Rol 8) o Admin (Rol 1)
-            if (estado === "Pendiente" && (rolUsuarioLogueado === 8 || rolUsuarioLogueado === 1)) {
+            /*  if (estado === "Pendiente" && (rolUsuarioLogueado === 8 || rolUsuarioLogueado === 1)) {*/
+            if ((!idAsignado || idAsignado === 0) && rolUsuarioLogueado === 8) {
                 $.post('@Url.Action("TomarAuditoria", "AuditoriaZ")', { idAuditoriaZ: id }, function (res) {
                     if (res.success) {
                         // Actualizamos el objeto local para que verDetalle muestre "En Proceso"
@@ -504,6 +551,7 @@
 
             $("#lblIdAuditoria").text(id);
             $("#txtSolicitante").text(audit.NombreSolicitador || audit.nombreSolicitador || "N/A");
+            $("#txtModificador").text(audit.NombreModificador || audit.nombreModificador || "N/A");
             $("#txtIncidencia").text(audit.TipoIncidenciaAuditoria || audit.tipoIncidenciaAuditoria || "N/A");
             const nombreAsignado = audit.NombreAsignado || audit.nombreAsignado || "Asignado a Ti";
             $("#txtAsignado").text(nombreAsignado);
@@ -702,7 +750,7 @@
             });
         }
 
-   
+
         // --- 5. MONITOREO OPTIMIZADO (USA EL ENDPOINT GLOBAL) ---
         function monitorearMensajesNuevos() {
             $.get('@Url.Action("ObtenerEstadoGlobalAuditoria", "AuditoriaZ")', function (estados) {
@@ -785,7 +833,7 @@
             formData.append("objeto.DescripcionProblema", auditoriaSeleccionada.DescripcionProblema || auditoriaSeleccionada.descripcionProblema);
             formData.append("objeto.ResolucionProblema", resText);
             formData.append("objeto.IdEstado", 4);
-
+            formData.append("objeto.IdUsuarioModificador", idUsuarioLogueado);
             $.ajax({
                 url: '@Url.Action("GuardarAuditoria", "AuditoriaZ")',
                 type: "POST",
@@ -797,6 +845,7 @@
                         Swal.fire('Guardado', 'Cerrado correctamente', 'success').then(() => location.reload());
                         if (nuevoEstadoId === 4) {
                             bloquearChatVisualmente();
+                            actualizarContadoresCards();
                         }
                     } else {
                         Swal.fire('Error', res.mensaje, 'error');
@@ -836,6 +885,30 @@
 
             // Opcional: Ocultar el botón de guardar si ya está cerrado
             $("#btnGuardarAuditoria").hide();
+        }
+        function actualizarContadoresCards() {
+            // Si el contenedor de las cards no existe en el HTML, salimos de la función
+            if ($('#card-total-abiertos').length === 0) return;
+
+            let abiertos = 0;
+            let proceso = 0;
+            let cerrados = 0;
+
+            // Recorremos la tabla para contar los estados actuales
+            $("#tblAuditorias tbody tr").each(function () {
+                // Buscamos el texto dentro del badge de estado en cada fila
+                let estado = $(this).find(".badge").text().trim().toLowerCase();
+
+                if (estado === "pendiente") abiertos++;
+                else if (estado === "en proceso") proceso++;
+                else if (estado === "cerrado") cerrados++;
+            });
+
+            // Asignamos los valores a las cards
+            $("#card-total-abiertos").text(abiertos);
+            $("#card-total-proceso").text(proceso);
+            // Si tienes un ID para la card de cerrados, agrégalo aquí:
+            // $("#card-total-cerrados").text(cerrados); 
         }
     </script>
 }

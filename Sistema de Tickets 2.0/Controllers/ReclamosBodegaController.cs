@@ -290,6 +290,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
 
             return Json(new { success = resultado, mensaje = mensaje });
         }
+
         [HttpGet]
         public JsonResult ObtenerAdjuntos(int idReclamo)
         {

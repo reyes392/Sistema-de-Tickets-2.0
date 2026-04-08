@@ -359,7 +359,7 @@
                     </div>
                 </li>
             }
-            @if (Tiene("RECLAMOS_VER"))
+            @if (Tiene("RECLAMOS_VER") || Tiene("TICKETS_REPORTE") || Tiene("ANULACIONES_REPORTE") || Tiene("AUDITORIAZ_REPORTE") || Tiene("CANJES_REPORTE"))
             {
                 <li class="nav-item @(IsMenuOpen("reclamosbodega","reportetickets","reporteanulaciones","reporteauditoriaz","reportescanjes") ? "active" : "")">
                     <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseReportes">

@@ -24,5 +24,7 @@ namespace Capa_Entidad.Auditoria_Z
         public string? TipoIncidenciaAuditoria { get; set; }
         public string? Estado { get; set; }
         public string? NombreAsignado { get; set; }
+        public int? IdUsuarioModificador { get; set; }
+        public string NombreModificador { get; set; }
     }
 }

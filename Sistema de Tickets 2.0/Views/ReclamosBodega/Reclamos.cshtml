@@ -84,6 +84,7 @@
         flex-direction: row-reverse;
         text-align: right;
     }
+
     @@keyframes pulse {
         0% {
             opacity: 1;
@@ -99,6 +100,50 @@
     }
 </style>
 
+@if (ViewBag.RolUsuario == 4) // Cambia el 1 por el ID que corresponda a "Administrador"
+{
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-warning text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">Total Abiertos</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-abiertos">
+                            @Model.Count(t => t.Estado == "Pendiente")
+                        </h2>
+                    </div>
+                    <i class="fas fa-folder-open fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-info text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">En Proceso</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-proceso">
+                            @Model.Count(t => t.Estado == "En Proceso")
+                        </h2>
+                    </div>
+                    <i class="fas fa-spinner fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        @*<div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-success text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase small fw-bold mb-1">Cerrados Hoy</h6>
+                            <h2 class="mb-0 fw-bold">
+                                @Model.Count(t => t.Estado == "Cerrado")
+                            </h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>*@
+    </div>
+}
 <div class="container-fluid mt-3">
     <div class="row">
         @* --- LISTADO DE RECLAMOS --- *@
@@ -232,9 +277,9 @@
 
                 @* Pestaña Adjuntos *@
                 @*<div class="tab-pane fade" id="adjuntosTab">
-            <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
-            <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
-        </div>*@
+                        <h6 class="fw-bold mb-3">Archivos cargados al crear ticket:</h6>
+                        <div id="listaAdjuntos" class="list-group list-group-flush border mb-3"></div>
+                    </div>*@
                 <div class="tab-pane fade" id="adjuntosTab">
                     <h6 class="fw-bold mb-3">Archivos cargados al reclamo:</h6>
 
@@ -296,7 +341,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Fecha de la requisa</label>
-                    <input class="form-control" type="text" id="FechaRequisa" autocomplete="off" maxlength="20"  placeholder="ejemplo : 25/01/2026">
+                    <input class="form-control" type="text" id="FechaRequisa" autocomplete="off" maxlength="20" placeholder="ejemplo : 25/01/2026">
                 </div>
 
                 @* ---  --- *@
@@ -351,7 +396,7 @@
 
             // --- 2. INICIALIZACIÓN MASIVA ---
             inicializarEstadosChats();
-
+            actualizarContadoresCards();
             // Obtener versión inicial
             $.get('@Url.Action("ObtenerVersionReclamos", "ReclamosBodega")', v => { versionReclamoActual = v; });
 
@@ -397,7 +442,7 @@
                 if (versionReclamoActual !== "" && nuevaVersion !== versionReclamoActual) {
                     versionReclamoActual = nuevaVersion;
                     refrescarTablaReclamos();
-
+                    actualizarContadoresCards();
                     if (!intervaloPestaña) {
                         intervaloPestaña = setInterval(() => {
                             document.title = (document.title === tituloOriginal) ? "✨ ACTUALIZACIÓN ✨" : tituloOriginal;
@@ -412,7 +457,7 @@
             $.get(window.location.href, function (data) {
                 const nuevoContenido = $(data).find("#tblReclamos tbody").html();
                 $("#tblReclamos tbody").html(nuevoContenido);
-
+                actualizarContadoresCards();
                 // IMPORTANTE: Volver a ejecutar la lógica de badges
                 setTimeout(() => {
                     inicializarEstadosChats();
@@ -470,7 +515,8 @@
 
             const idAsignadoActual = info.IdUsuarioAsignado || info.idUsuarioAsignado;
 
-            if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {
+            /*   if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {*/
+            if ((!idAsignadoActual || idAsignadoActual === 0) && rolUsuarioLogueado === 4) {
                 $.post('@Url.Action("TomarReclamo", "ReclamosBodega")', { idReclamo: idReclamo }, function (res) {
                     if (res.success) {
                         info.IdEstado = 5;
@@ -509,7 +555,8 @@
 
             const id = reclamo.IdReclamo || reclamo.idReclamo;
             const estado = reclamo.Estado || reclamo.estado;
-
+            // AQUÍ ESTABA EL ERROR: Necesitamos definir idAsignado
+            const idAsignado = reclamo.IdUsuarioAsignado || reclamo.idUsuarioAsignado || 0;
             // Llenado de UI
             $("#lblIdReclamo").text(id);
             $("#txtSolicitante").text(reclamo.UsuarioSolicitador || reclamo.usuarioSolicitador || "N/A");
@@ -539,7 +586,7 @@
                 $("#txtMensajeChat").attr("placeholder", "Escribe un comentario...");
             }
             // Lógica de Seguridad para edición
-            let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 1 || idAsignado === idUsuarioLogueado));
+            let puedeEditar = (estado !== "Cerrado" && (rolUsuarioLogueado === 4 || idAsignado === idUsuarioLogueado));
             if (puedeEditar) {
                 $("#btnGuardarReclamo").show();
                 $("#txtResolucion, #txtDetalleProblema").prop("readonly", false).removeClass("bg-light");
@@ -547,10 +594,13 @@
                 $("#btnGuardarReclamo").hide();
                 $("#txtResolucion, #txtDetalleProblema").prop("readonly", true).addClass("bg-light");
             }
+
+
             actualizarChatSilencioso();
             marcarComoLeido();
-            cargarAdjuntos(id);
+
             iniciarRefrescoChat();
+            cargarAdjuntos(id);
         }
 
         function marcarComoLeido() {
@@ -697,13 +747,37 @@
             $("#imgMiniaturaChat").hide(); // Limpiamos la miniatura
         }
 
-        function cargarAdjuntos(id) {
+        @*function cargarAdjuntos(id) {
             $.get('@Url.Action("ObtenerAdjuntos", "ReclamosBodega")', { idReclamo: id }, function(data) {
                 let html = data.map(x => `<a href="${x.ruta}" target="_blank" class="list-group-item list-group-item-action small">${x.nombreOriginal}</a>`).join('');
                 $("#listaAdjuntos").html(html || '<div class="p-3 text-center text-muted small">No hay archivos</div>');
             });
-        }
+        }*@
+        function cargarAdjuntos(id) {
+            if (!id) return;
 
+            $.get('@Url.Action("ObtenerAdjuntos", "ReclamosBodega")', { idReclamo: id }, function(data) {
+                // Validamos si data tiene información
+                if (data && data.length > 0) {
+                    let html = data.map(x => {
+                        // Probamos ambas versiones: minúscula (ruta) y Mayúscula (Ruta)
+                        const ruta = x.ruta || x.Ruta;
+                        const nombre = x.nombreOriginal || x.NombreOriginal;
+
+                        return `<a href="${ruta}" target="_blank" class="list-group-item list-group-item-action small d-flex justify-content-between align-items-center">
+                                    ${nombre}
+                                    <i class="fas fa-file-download text-primary"></i>
+                                </a>`;
+                    }).join('');
+
+                    $("#listaAdjuntos").html(html);
+                } else {
+                    $("#listaAdjuntos").html('<div class="p-3 text-center text-muted small">No hay archivos cargados.</div>');
+                }
+            }).fail(function() {
+                $("#listaAdjuntos").html('<div class="p-3 text-center text-danger small">Error al conectar con el servidor.</div>');
+            });
+        }
         function abrirModalNuevo() { $("#modalNuevoReclamo").modal("show"); }
 
         //function crearReclamo() {
@@ -806,6 +880,7 @@
                             if (response.success) {
                                 Swal.fire('Éxito', 'reclamo actualizado', 'success').then(() => {
                                     refrescarTablaReclamos();
+                                    actualizarContadoresCards();
                                     if (nuevoEstadoId === 4) {
                                         bloquearChatVisualmente();
                                     }
@@ -972,7 +1047,30 @@
                 }
             });
         }
+        function actualizarContadoresCards() {
+            // Si el contenedor de las cards no existe en el HTML, salimos de la función
+            if ($('#card-total-abiertos').length === 0) return;
 
+            let abiertos = 0;
+            let proceso = 0;
+            let cerrados = 0;
+
+            // Recorremos la tabla para contar los estados actuales
+            $("#tblReclamos tbody tr").each(function () {
+                // Buscamos el texto dentro del badge de estado en cada fila
+                let estado = $(this).find(".badge").text().trim().toLowerCase();
+
+                if (estado === "pendiente") abiertos++;
+                else if (estado === "en proceso") proceso++;
+                else if (estado === "cerrado") cerrados++;
+            });
+
+            // Asignamos los valores a las cards
+            $("#card-total-abiertos").text(abiertos);
+            $("#card-total-proceso").text(proceso);
+            // Si tienes un ID para la card de cerrados, agrégalo aquí:
+            // $("#card-total-cerrados").text(cerrados);
+        }
     </script>
 }
 

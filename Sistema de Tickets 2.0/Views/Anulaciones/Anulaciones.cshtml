@@ -79,6 +79,50 @@
     }
 </style>
 
+@if (ViewBag.RolUsuario == 9) // Cambia el 1 por el ID que corresponda a "Administrador"
+{
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-warning text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">Total Abiertos</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-abiertos">
+                            @Model.Count(t => t.Estado == "Pendiente")
+                        </h2>
+                    </div>
+                    <i class="fas fa-folder-open fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-info text-white">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="text-uppercase small fw-bold mb-1">En Proceso</h6>
+                        <h2 class="mb-0 fw-bold" id="card-total-proceso">
+                            @Model.Count(t => t.Estado == "En Proceso")
+                        </h2>
+                    </div>
+                    <i class="fas fa-spinner fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        @*<div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-success text-white">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-uppercase small fw-bold mb-1">Cerrados Hoy</h6>
+                            <h2 class="mb-0 fw-bold">
+                                @Model.Count(t => t.Estado == "Cerrado")
+                            </h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>*@
+    </div>
+}
 <div class="container-fluid mt-3">
     <div class="row">
         @* --- LISTADO DE ANULACIONES --- *@
@@ -113,7 +157,7 @@
                                 </td>
                                 <td>@t.UsuarioSolicitador</td>
                                 <td>@t.Incidencia</td>
-        
+
                                 <td>@t.Registro</td>
                                 <td>
                                     <span class="badge @(t.Estado == "Pendiente" ? "bg-warning text-dark" : (t.Estado == "Cerrado" ? "bg-success" : "bg-info"))">
@@ -171,9 +215,9 @@
                         <textarea id="txtDetalleProblema" class="form-control bg-light" rows="3" readonly></textarea>
                     </div>
                     @*<div class="mb-3">
-            <label class="fw-bold small text-danger">Descripción del Problema:</label>
-            <textarea id="txtDetalleProblema" class="form-control border-danger" rows="4"></textarea>
-        </div>*@
+                            <label class="fw-bold small text-danger">Descripción del Problema:</label>
+                            <textarea id="txtDetalleProblema" class="form-control border-danger" rows="4"></textarea>
+                        </div>*@
                     <div class="mb-3">
                         <label class="fw-bold small text-success">Resolución Técnica:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
@@ -305,7 +349,7 @@
         const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
 
 
- 
+
 
 
         $(document).ready(function () {
@@ -336,7 +380,7 @@
             // 2. Ejecutar revisiones iniciales
             actualizarVersionBaseDatos();
             sincronizarEstadosChatMasivo(); // Reemplaza al antiguo .each()
-
+            actualizarContadoresCards();
             // 3. Configurar Monitores (Timers)
             setInterval(verificarCambios, 10000);
             setInterval(sincronizarEstadosChatMasivo, 6000); // El monitor ahora es masivo
@@ -405,7 +449,7 @@
                     versionActual = nuevaVersion;
 
                     refrescarTablaTickets(); // Actualiza la tabla sin F5
-
+                    actualizarContadoresCards();
                     // Notificamos visualmente en la pestaña solo si no es el usuario que está mirando el detalle
                     if (!intervaloPestaña) {
                         intervaloPestaña = setInterval(() => {
@@ -438,6 +482,7 @@
                 const nuevoContenido = $(data).find("#tblTickets tbody").html();
                 // Lo reemplazamos en nuestra tabla visible
                 $("#tblTickets tbody").html(nuevoContenido);
+                actualizarContadoresCards();
                 console.log("Tabla actualizada dinámicamente.");
             });
         }
@@ -458,7 +503,8 @@
             const idAsignadoActual = info.IdUsuarioAsignado || info.idUsuarioAsignado;
 
             // Auto-asignación: Si no tiene técnico y yo soy Staff
-            if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {
+            /*   if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {*/
+            if ((!idAsignadoActual || idAsignadoActual === 0) && rolUsuarioLogueado === 9) {
                 $.post('@Url.Action("TomarAnulacion", "Anulaciones")', { idAnulacion: idAnulacion }, function (res) {
                     if (res.success) {
                         // Actualizamos el objeto local y la fila visualmente
@@ -520,7 +566,7 @@
                 anulacion.descripcionproblema ||
                 "");
             $("#txtResolucion").val(anulacion.resolucion || anulacion.Resolucion || "");
-         
+
 
             // Badge de estado
             let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
@@ -705,7 +751,7 @@
 
 
          function monitorearMensajesNuevos() {
-      
+
              sincronizarEstadosChatMasivo();
         }
 
@@ -824,6 +870,7 @@
                             if (response.success) {
                                 Swal.fire('Éxito', 'Actualizado', 'success').then(() => {
                                     refrescarTablaTickets();
+                                    actualizarContadoresCards();
                                     // PASO CLAVE: Pasamos el objeto con el NUEVO estado para que verDetalle lo oculte
                                     if (nuevoEstadoId === 4) {
                                         bloquearChatVisualmente();
@@ -913,6 +960,31 @@
 
             // Opcional: Ocultar el botón de guardar si ya está cerrado
             $("#btnGuardarTicket").hide();
+        }
+
+        function actualizarContadoresCards() {
+            // Si el contenedor de las cards no existe en el HTML, salimos de la función
+            if ($('#card-total-abiertos').length === 0) return;
+
+            let abiertos = 0;
+            let proceso = 0;
+            let cerrados = 0;
+
+            // Recorremos la tabla para contar los estados actuales
+            $("#tblTickets tbody tr").each(function () {
+                // Buscamos el texto dentro del badge de estado en cada fila
+                let estado = $(this).find(".badge").text().trim().toLowerCase();
+
+                if (estado === "pendiente") abiertos++;
+                else if (estado === "en proceso") proceso++;
+                else if (estado === "cerrado") cerrados++;
+            });
+
+            // Asignamos los valores a las cards
+            $("#card-total-abiertos").text(abiertos);
+            $("#card-total-proceso").text(proceso);
+            // Si tienes un ID para la card de cerrados, agrégalo aquí:
+            // $("#card-total-cerrados").text(cerrados); 
         }
     </script>
 }
