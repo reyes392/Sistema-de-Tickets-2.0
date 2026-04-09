@@ -69,34 +69,61 @@ namespace Sistema_de_Tickets_2._0.Controllers
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         ///GESTION DE ANULACIONES
         /////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        [Permiso("ANULACIONES_VER")]
-        public IActionResult Anulaciones()
+        [HttpGet]
+        public JsonResult ObtenerAnulacionesTabla()
         {
-            ViewBag.Incidencias = _Incidencias.Listar();
-            ViewBag.Estados = _estadoNegocio.ListarEstados();
-            ViewBag.Cajas = _cajas.Listar();
-
-            // Obtenemos datos de sesión
             int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-            string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            // Pasamos a la vista para el JS
-            ViewBag.IdUsuarioLogueado = idLogueado;
-            ViewBag.RolUsuario = idRolLogueado;
-            ViewBag.NombreUsuarioLogueado = nombreLogueado;
 
             var lista = _anulaciones.Listar();
 
-            // LÓGICA DE FILTRADO SOLICITADA:
-            // Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
-            if (idRolLogueado != 1 && idRolLogueado != 6)
+            // Lógica de filtrado: Admin (1) y Personal Anulaciones (9?) ven todo.
+            // Ajusta los IDs de rol según tu base de datos
+            if (idRolLogueado != 1 && idRolLogueado != 6 && idRolLogueado != 9)
             {
                 lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
             }
 
-            return View(lista);
+            return Json(lista);
+        }
+        [Permiso("ANULACIONES_VER")]
+        public IActionResult Anulaciones()
+        {
+            //ViewBag.Incidencias = _Incidencias.Listar();
+            //ViewBag.Estados = _estadoNegocio.ListarEstados();
+            //ViewBag.Cajas = _cajas.Listar();
+
+            //// Obtenemos datos de sesión
+            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            //string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            //// Pasamos a la vista para el JS
+            //ViewBag.IdUsuarioLogueado = idLogueado;
+            //ViewBag.RolUsuario = idRolLogueado;
+            //ViewBag.NombreUsuarioLogueado = nombreLogueado;
+
+            //var lista = _anulaciones.Listar();
+
+            //// LÓGICA DE FILTRADO SOLICITADA:
+            //// Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
+            //if (idRolLogueado != 1 && idRolLogueado != 6)
+            //{
+            //    lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
+            //}
+
+            //return View(lista);
+            // Solo cargamos los combos para los modales
+            ViewBag.Incidencias = _Incidencias.Listar();
+            ViewBag.Estados = _estadoNegocio.ListarEstados();
+            ViewBag.Cajas = _cajas.Listar();
+
+            ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            // Enviamos una lista vacía porque AJAX llenará la tabla al cargar
+            return View(new List<E_Anulaciones>());
         }
 
         [Permiso("ANULACIONES_CREAR_EDITAR")]
@@ -238,8 +265,14 @@ namespace Sistema_de_Tickets_2._0.Controllers
         public IActionResult TomarAnulacion(int idAnulacion)
         {
             int idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            if (idUsuarioSesion == 0) return Json(new { success = false, mensaje = "Sesión expirada" });
+            int idRol = HttpContext.Session.GetInt32("IdRol") ?? 0;
 
+            if (idUsuarioSesion == 0) return Json(new { success = false, mensaje = "Sesión expirada" });
+            if (idRol != 9)
+            {
+                // Retornamos éxito falso para que el JS no actualice la UI como si se hubiera asignado
+                return Json(new { success = false, mensaje = "Solo personal de Anulaciones puede tomar reclamos." });
+            }
             // Llamamos al método que asigna y cambia estado
             bool ok = _anulaciones.AsignarYProcesar(idAnulacion, idUsuarioSesion, out string mensaje);
 

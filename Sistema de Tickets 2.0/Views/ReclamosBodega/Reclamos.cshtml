@@ -167,7 +167,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var t in Model)
+                        @*@foreach (var t in Model)
                         {
                             <tr id="row-@t.IdReclamo">
                                 <td>
@@ -190,7 +190,7 @@
                                     </button>
                                 </td>
                             </tr>
-                        }
+                        }*@
                     </tbody>
                 </table>
             </div>
@@ -387,13 +387,70 @@
         const nombreTecnicoLogueado = '@ViewBag.NombreUsuarioLogueado';
         const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
 
-        $(document).ready(function () {
-            $('#tblReclamos').DataTable({
-                pageLength: 10,
-                order: [],
-                language: { url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json" }
-            });
+        let tablaReclamos = null;
 
+        $(document).ready(function () {
+            //$('#tblReclamos').DataTable({
+            //    pageLength: 10,
+            //    order: [],
+            //    language: { url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json" }
+            //});
+            // Inicializar DataTable con AJAX
+            tablaReclamos = $('#tblReclamos').DataTable({
+                destroy: true,
+               /* processing: true, // Muestra el cargando al centro*/
+                order: [],        // Respeta el orden de SQL
+                ajax: {
+                    url: '@Url.Action("ObtenerReclamosTabla", "ReclamosBodega")', // Ajusta "Home" por el nombre de tu controlador
+                    type: 'GET',
+                    dataSrc: ''
+                },
+                columns: [
+                    {
+                        data: 'idReclamo',
+                        render: function(data, type, row) {
+                            return `
+                                <span class="fw-bold">${data}</span>
+                                <span id="notif-${data}" class="badge rounded-pill bg-danger d-none notif-badge">
+                                    <i class="fas fa-comment"></i>
+                                </span>`;
+                        }
+                    },
+                    { data: 'usuarioSolicitador' },
+                    { data: 'tipoIncidenciaReclamo' },
+                    {
+                        data: 'registro',
+                        render: function(data) { return data ? data : '---'; }
+                    },
+                    {
+                        data: 'estado',
+                        render: function (data) {
+                            let color = (data === "Pendiente") ? "bg-warning text-dark" : (data === "Cerrado" ? "bg-success" : "bg-info");
+                            return `<span class="badge ${color}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        className: 'text-center',
+                        render: function (data, type, row) {
+                            let jsonString = JSON.stringify(row).replace(/"/g, '&quot;');
+                            return `
+                                <button class="btn btn-sm btn-outline-primary btn-ver" data-info='${jsonString}'>
+                                    <i class="fas fa-eye"></i> Ver
+                                </button>`;
+                        }
+                    }
+                ],
+                drawCallback: function() {
+                    // Sincroniza badges de chat después de cargar datos
+                    if (typeof inicializarEstadosChats === "function") inicializarEstadosChats();
+                },
+                language: {
+                    processing: '<div class="spinner-border text-primary" role="status"></div>',
+                    url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+                }
+            });
             // --- 2. INICIALIZACIÓN MASIVA ---
             inicializarEstadosChats();
             actualizarContadoresCards();
@@ -454,15 +511,24 @@
 
 
         function refrescarTablaReclamos() {
-            $.get(window.location.href, function (data) {
-                const nuevoContenido = $(data).find("#tblReclamos tbody").html();
-                $("#tblReclamos tbody").html(nuevoContenido);
-                actualizarContadoresCards();
-                // IMPORTANTE: Volver a ejecutar la lógica de badges
-                setTimeout(() => {
-                    inicializarEstadosChats();
-                }, 100);
-            });
+            //$.get(window.location.href, function (data) {
+            //    const nuevoContenido = $(data).find("#tblReclamos tbody").html();
+            //    $("#tblReclamos tbody").html(nuevoContenido);
+            //    actualizarContadoresCards();
+            //    // IMPORTANTE: Volver a ejecutar la lógica de badges
+            //    setTimeout(() => {
+            //        inicializarEstadosChats();
+            //    }, 100);
+            //});
+            if (tablaReclamos) {
+                // Recarga solo los datos sin parpadeo de página
+                tablaReclamos.ajax.reload(null, false);
+
+                if (typeof actualizarContadoresCards === "function") {
+                    actualizarContadoresCards();
+                }
+                console.log("Tabla de reclamos actualizada vía AJAX.");
+            }
         }
 
         // --- 5. MONITOREO MASIVO DE MENSAJES (OPTIMIZADO) ---
@@ -502,7 +568,7 @@
         }
 
         // --- 6. EVENTO: VER DETALLE ---
-        $(document).on("click", ".btn-ver", function () {
+        @*$(document).on("click", ".btn-ver", function () {
             let $btn = $(this);
             let info = $btn.data("info");
             const idReclamo = info.IdReclamo || info.idReclamo;
@@ -528,6 +594,43 @@
                     verDetalle(info);
                 });
             } else {
+                verDetalle(info);
+            }
+        });*@
+        $(document).on("click", ".btn-ver", function () {
+            let $btn = $(this);
+            let info = $btn.data("info");
+            const idReclamo = info.IdReclamo || info.idReclamo;
+
+            // 1. Limpiar intervalos de alertas si existen
+            if (intervaloPestaña) {
+                clearInterval(intervaloPestaña);
+                intervaloPestaña = null;
+                document.title = tituloOriginal;
+            }
+
+            const idAsignadoActual = info.IdUsuarioAsignado || info.idUsuarioAsignado || 0;
+
+            // 2. Lógica de Auto-Asignación:
+            // SOLO si no tiene nadie asignado Y el usuario es ROL 4
+            if (idAsignadoActual === 0 && rolUsuarioLogueado === 4) {
+                $.post('@Url.Action("TomarReclamo", "ReclamosBodega")', { idReclamo: idReclamo }, function (res) {
+                    if (res.success) {
+                        info.IdEstado = 5;
+                        info.Estado = "En Proceso";
+                        info.IdUsuarioAsignado = idUsuarioLogueado;
+
+                        // Actualizar visualmente la fila en la tabla
+                        $btn.data("info", info);
+                        $btn.closest("tr").find(".badge").first()
+                            .text("En Proceso")
+                            .attr("class", "badge bg-info text-dark");
+                    }
+                    // Siempre mostramos el detalle, haya tenido éxito la asignación o no
+                    verDetalle(info);
+                });
+            } else {
+                // Si ya está asignado o el usuario NO es rol 4 (es creador o admin), solo ve el detalle
                 verDetalle(info);
             }
         });

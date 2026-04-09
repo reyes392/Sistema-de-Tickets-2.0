@@ -76,90 +76,59 @@ namespace Sistema_de_Tickets_2._0.Controllers
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         ///GESTION DE RECLAMOS
         /////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        [Permiso("RECLAMOS_VER")]
-        public IActionResult Reclamos()
+        [HttpGet]
+        public JsonResult ObtenerReclamosTabla()
         {
-            ViewBag.Incidencias = _negocioIncidencias.Listar();
-            ViewBag.Estados = _negocioEstados.ListarEstados();
-
-            // Obtenemos datos de sesión
             int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-            string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            // Pasamos a la vista para el JS
-            ViewBag.IdUsuarioLogueado = idLogueado;
-            ViewBag.RolUsuario = idRolLogueado;
-            ViewBag.NombreUsuarioLogueado = nombreLogueado;
 
             var lista = _negocioReclamos.Listar();
 
-            // LÓGICA DE FILTRADO SOLICITADA:
-            // Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
+            // Lógica de filtrado: Admin (1) y Bodega (4) ven todo.
             if (idRolLogueado != 1 && idRolLogueado != 4)
             {
                 lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
             }
 
-            return View(lista);
+            return Json(lista);
         }
-        //[Permiso("RECLAMO_CREAR_EDITAR")]
-        //[HttpPost]
-        //public IActionResult GuardarReclamo(E_ReclamosBodega reclamos, string Accion, List<IFormFile> archivos)
-        //{
-        //    // 1. Recuperamos el ID del usuario desde la Sesión
-        //    int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
+        [Permiso("RECLAMOS_VER")]
+        public IActionResult Reclamos()
+        {
+            //ViewBag.Incidencias = _negocioIncidencias.Listar();
+            //ViewBag.Estados = _negocioEstados.ListarEstados();
 
-        //    if (idUsuarioSesion == null)
-        //    {
-        //        return Json(new { success = false, mensaje = "La sesión ha expirado. Por favor, inicie sesión nuevamente." });
-        //    }
+            //// Obtenemos datos de sesión
+            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            //string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
 
-        //    // 2. Si es un INSERT, asignamos el ID del usuario de la sesión como solicitante
-        //    if (Accion == "INSERT")
-        //    {
-        //        reclamos.IdUsuarioSolicitud = idUsuarioSesion.Value;
-        //    }
+            //// Pasamos a la vista para el JS
+            //ViewBag.IdUsuarioLogueado = idLogueado;
+            //ViewBag.RolUsuario = idRolLogueado;
+            //ViewBag.NombreUsuarioLogueado = nombreLogueado;
 
-        //    // 3. Guardamos el Ticket (Recuerda que ahora el SP devuelve el ID generado en tickets.IdTicket)
-        //    bool resultado = _negocioReclamos.Guardar(reclamos, Accion, out string mensaje);
+            //var lista = _negocioReclamos.Listar();
 
-        //    //4.Lógica de Archivos: Solo si el ticket se guardó bien y vienen archivos
-        //    if (resultado && archivos != null && archivos.Count > 0)
-        //    {
-        //        try
-        //        {
-        //            // Ruta física: wwwroot/uploads/reclamos/
-        //            string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "reclamos");
+            //// LÓGICA DE FILTRADO SOLICITADA:
+            //// Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
+            //if (idRolLogueado != 1 && idRolLogueado != 4)
+            //{
+            //    lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
+            //}
 
-        //            foreach (var file in archivos)
-        //            {
-        //                // Guardar el archivo físico usando tu Capa de Negocio de archivos
-        //                string nombreSistema = _negocioArchivos.GuardarFisico(file, folderPath);
+            //return View(lista);
+            ViewBag.Incidencias = _negocioIncidencias.Listar();
+            ViewBag.Estados = _negocioEstados.ListarEstados();
 
-        //                // Registrar la referencia en la base de datos
-        //                var entidadArchivo = new E_Archivos
-        //                {
-        //                    IdReferencia = reclamos.IdReclamo, // El ID que devolvió el SP
-        //                    NombreOriginal = file.FileName,
-        //                    NombreSistema = nombreSistema,
-        //                    Extension = Path.GetExtension(file.FileName),
-        //                    Ruta = "/uploads/reclamos/" + nombreSistema
-        //                };
+            ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
 
-        //                _negocioArchivos.RegistrarEnBaseDatos(entidadArchivo);
-        //            }
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            // Opcional: Podrías acumular un mensaje de error si los archivos fallan pero el ticket no
-        //            mensaje += " (Aviso: El reclamo se guardó pero hubo problemas con los archivos: " + ex.Message + ")";
-        //        }
-        //    }
+            // Retornamos lista vacía para carga instantánea
+            return View(new List<E_ReclamosBodega>());
+        }
 
-        //    return Json(new { success = resultado, mensaje = mensaje });
-        //}
         [Permiso("RECLAMO_CREAR_EDITAR")]
         [HttpPost]
         public IActionResult GuardarReclamo(E_ReclamosBodega reclamos, string Accion, List<IFormFile> archivos)
@@ -302,15 +271,33 @@ namespace Sistema_de_Tickets_2._0.Controllers
             return Json(lista);
         }
 
+        //[HttpPost]
+        //public IActionResult TomarReclamo(int idReclamo)
+        //{
+        //    int idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+        //    if (idUsuarioSesion == 0) return Json(new { success = false, mensaje = "Sesión expirada" });
+
+        //    // Llamamos al método que asigna y cambia estado
+        //    bool ok = _negocioReclamos.AsignarYProcesar(idReclamo, idUsuarioSesion, out string mensaje);
+
+        //    return Json(new { success = ok, mensaje = mensaje });
+        //}
         [HttpPost]
         public IActionResult TomarReclamo(int idReclamo)
         {
             int idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            int idRol = HttpContext.Session.GetInt32("IdRol") ?? 0;
+
             if (idUsuarioSesion == 0) return Json(new { success = false, mensaje = "Sesión expirada" });
 
-            // Llamamos al método que asigna y cambia estado
-            bool ok = _negocioReclamos.AsignarYProcesar(idReclamo, idUsuarioSesion, out string mensaje);
+            // REGLA DE ORO: Solo el rol 4 puede ejecutar la lógica de "Tomar"
+            if (idRol != 4)
+            {
+                // Retornamos éxito falso para que el JS no actualice la UI como si se hubiera asignado
+                return Json(new { success = false, mensaje = "Solo personal de bodega puede tomar reclamos." });
+            }
 
+            bool ok = _negocioReclamos.AsignarYProcesar(idReclamo, idUsuarioSesion, out string mensaje);
             return Json(new { success = ok, mensaje = mensaje });
         }
 

@@ -149,32 +149,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var t in Model)
-                        {
-                            <tr id="row-@t.IdCanje">
-                                <td>
-                                    <span class="fw-bold">@t.IdCanje</span>
-                                    @* ID del badge correcto *@
-                                    <span id="notif-@t.IdCanje" class="badge rounded-pill bg-danger d-none notif-badge">
-                                        <i class="fas fa-comment"></i>
-                                    </span>
-                                </td>
-                                <td>@t.NombreSolicitador</td>
-                                <td>@t.TipoIncidencia</td>
-                                <td>@t.FechaRegistro</td>
-                                <td>
-                                    <span class="badge @(t.IdEstado == 3 ? "bg-warning text-dark" : (t.IdEstado == 6 ? "bg-success" : "bg-info"))">
-                                        @t.Estado
-                                    </span>
-                                </td>
-
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-primary btn-ver" data-info='@Json.Serialize(t)'>
-                                        <i class="fas fa-eye"></i> Ver
-                                    </button>
-                                </td>
-                            </tr>
-                        }
+                      
                     </tbody>
                 </table>
             </div>
@@ -361,6 +336,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         let ultimaCantidadComentarios = 0;
+        let tablaCanjes = null;
     // --- 1. CONFIGURACIÓN Y USUARIO ---
           const user = {
             id: parseInt('@ViewBag.IdUsuarioLogueado') || 0,
@@ -391,27 +367,80 @@
         $(document).ready(function () {
 
 
-            $('#tblCanjes').DataTable({
+            //$('#tblCanjes').DataTable({
 
-                pageLength: 10,
-                lengthMenu: [5, 10, 25, 50],
+            //    pageLength: 10,
+            //    lengthMenu: [5, 10, 25, 50],
+            //    order: [],
+            //    language: {
+            //        lengthMenu: "Mostrar _MENU_ registros",
+
+            //        zeroRecords: "No se encontraron datos",
+            //        info: "Página _PAGE_ de _PAGES_",
+            //        infoEmpty: "No hay registros",
+            //        infoFiltered: "(filtrado de _MAX_ registros)",
+            //        search: "Buscar:",
+            //        paginate: {
+            //            first: "Primero",
+            //            last: "Último",
+            //            next: "Siguiente",
+            //            previous: "Anterior"
+            //        }
+            //    }
+
+            //});
+            // 1. Inicializar DataTable
+            tablaCanjes = $('#tblCanjes').DataTable({
+                destroy: true,
+         /*       processing: true,*/
                 order: [],
-                language: {
-                    lengthMenu: "Mostrar _MENU_ registros",
-
-                    zeroRecords: "No se encontraron datos",
-                    info: "Página _PAGE_ de _PAGES_",
-                    infoEmpty: "No hay registros",
-                    infoFiltered: "(filtrado de _MAX_ registros)",
-                    search: "Buscar:",
-                    paginate: {
-                        first: "Primero",
-                        last: "Último",
-                        next: "Siguiente",
-                        previous: "Anterior"
+                ajax: {
+                    url: '@Url.Action("ObtenerCanjesTabla", "Canjes")',
+                    type: 'GET',
+                    dataSrc: ''
+                },
+                columns: [
+                    {
+                        data: 'idCanje',
+                        render: function(data) {
+                            return `<span class="fw-bold">#${data}</span>
+                                    <span id="notif-${data}" class="badge rounded-pill bg-danger d-none animate__animated animate__pulse animate__infinite">
+                                        <i class="fas fa-comment"></i>
+                                    </span>`;
+                        }
+                    },
+                    { data: 'nombreSolicitador' },
+                    { data: 'tipoIncidencia' },
+                    {
+                        data: 'fechaRegistro',
+                        render: function(data) {
+                            return data ? data : '---'; // O formatear si recibes objeto Date
+                        }
+                    },
+                    {
+                        data: 'idEstado',
+                        className: 'text-center',
+                        render: function (data, type, row) {
+                            let color = (data == 3) ? "bg-warning text-dark" : (data == 6 ? "bg-success" : "bg-info");
+                            return `<span class="badge ${color}">${row.estado}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        className: 'text-center',
+                        render: function (data, type, row) {
+                            let jsonString = JSON.stringify(row).replace(/"/g, '&quot;');
+                            return `<button class="btn btn-sm btn-outline-primary btn-ver" data-info='${jsonString}'>
+                                        <i class="fas fa-eye"></i> Ver
+                                    </button>`;
+                        }
                     }
+                ],
+                language: { url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json" },
+                drawCallback: function() {
+                    if (typeof monitorearMensajesNuevos === "function") monitorearMensajesNuevos();
                 }
-
             });
             // Carga inicial de versión
             $.get('@Url.Action("ObtenerVersionCanjes", "Canjes")', v => state.versionCanjeActual = v);
@@ -432,23 +461,37 @@
             });
         }
         function refrescarTablaCanjes() {
-            $.get(window.location.href, function (data) {
-                const nuevoContenido = $(data).find("#tblCanjes tbody").html();
-                $("#tblCanjes tbody").html(nuevoContenido);
-                actualizarContadoresCards();
-                // RE-VINCULAR DATOS: Si hay un canje abierto, buscamos su nueva info en la tabla
-                if (state.canjeSeleccionado) {
-                    const idActual = getId(state.canjeSeleccionado);
-                    // Buscamos el botón "Ver" de la fila que acabamos de renderizar
-                    const botonNuevo = $(`#row-${idActual} .btn-ver`);
+            //$.get(window.location.href, function (data) {
+            //    const nuevoContenido = $(data).find("#tblCanjes tbody").html();
+            //    $("#tblCanjes tbody").html(nuevoContenido);
+            //    actualizarContadoresCards();
+            //    // RE-VINCULAR DATOS: Si hay un canje abierto, buscamos su nueva info en la tabla
+            //    if (state.canjeSeleccionado) {
+            //        const idActual = getId(state.canjeSeleccionado);
+            //        // Buscamos el botón "Ver" de la fila que acabamos de renderizar
+            //        const botonNuevo = $(`#row-${idActual} .btn-ver`);
 
-                    if (botonNuevo.length > 0) {
-                        const infoActualizada = botonNuevo.data("info");
-                        state.canjeSeleccionado = infoActualizada;
-                        verDetalle(infoActualizada); // Esto repinta los textos de auditoría
+            //        if (botonNuevo.length > 0) {
+            //            const infoActualizada = botonNuevo.data("info");
+            //            state.canjeSeleccionado = infoActualizada;
+            //            verDetalle(infoActualizada); // Esto repinta los textos de auditoría
+            //        }
+            //    }
+            //});
+            if (tablaCanjes) {
+                tablaCanjes.ajax.reload(function () {
+                    // Si el usuario tenía algo seleccionado, actualizar su info en 'state'
+                    if (state.canjeSeleccionado) {
+                        const idActual = getId(state.canjeSeleccionado);
+                        // Buscar en los nuevos datos de la tabla
+                        const nuevaInfo = tablaCanjes.rows().data().toArray().find(x => getId(x) === idActual);
+                        if (nuevaInfo) {
+                            state.canjeSeleccionado = nuevaInfo;
+                            verDetalle(nuevaInfo); // Actualiza textos e badges sin cerrar el panel
+                        }
                     }
-                }
-            });
+                }, false); // false = mantener posición del paginado
+            }
         }
 
        // --- 4. GESTIÓN DE DETALLE Y ESTADOS ---
@@ -1095,7 +1138,7 @@
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
             // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados); 
+            // $("#card-total-cerrados").text(cerrados);
         }
     </script>
 }

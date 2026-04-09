@@ -152,25 +152,46 @@ namespace Sistema_de_Tickets_2._0.Controllers
         #endregion
 
         #region GESTIÓN DE AUDITORÍA Z
-        [Permiso("AUDITORIAZ_VER")]
-     
-        public IActionResult AuditoriaZ()
+        [HttpGet]
+        public JsonResult ObtenerAuditoriasTabla()
         {
             int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
 
-            // Pasamos los datos a la vista para validaciones de UI
-            ViewBag.IdUsuarioLogueado = idLogueado;
-            ViewBag.RolUsuario = idRolLogueado;
-            ViewBag.Incidencias = _incidencia.Listar();
-
-            // Filtro inteligente: 
-            // Si es Administrador (1) o Gerencia (5), ve TODO.
-            // Si es Auditor de Z (8), ve lo que tiene asignado.
-            // Otros (Farmacia, etc.), ven solo lo que ellos solicitaron.
+            // Tu lógica de negocio ya tiene el filtro inteligente
             var lista = _negocioAuditoria.Listar(idLogueado, idRolLogueado);
 
-            return View(lista);
+            return Json(lista);
+        }
+
+
+        [Permiso("AUDITORIAZ_VER")]
+     
+        public IActionResult AuditoriaZ()
+        {
+            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+
+            //// Pasamos los datos a la vista para validaciones de UI
+            //ViewBag.IdUsuarioLogueado = idLogueado;
+            //ViewBag.RolUsuario = idRolLogueado;
+            //ViewBag.Incidencias = _incidencia.Listar();
+
+            //// Filtro inteligente: 
+            //// Si es Administrador (1) o Gerencia (5), ve TODO.
+            //// Si es Auditor de Z (8), ve lo que tiene asignado.
+            //// Otros (Farmacia, etc.), ven solo lo que ellos solicitaron.
+            //var lista = _negocioAuditoria.Listar(idLogueado, idRolLogueado);
+
+            //return View(lista);
+            // Solo cargamos datos para modales y UI
+            ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            ViewBag.Incidencias = _incidencia.Listar();
+            ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            // Retorna vista con lista vacía (AJAX hará el trabajo)
+            return View(new List<E_AuditoriaZ>());
         }
 
         [Permiso("AUDITORIAZ_CREAR_EDITAR")]
@@ -352,8 +373,13 @@ namespace Sistema_de_Tickets_2._0.Controllers
         public IActionResult TomarAuditoria(int idAuditoriaZ)
         {
             int idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            int idRol = HttpContext.Session.GetInt32("IdRol") ?? 0;
             if (idUsuarioSesion == 0) return Json(new { success = false, mensaje = "Sesión expirada" });
-
+            if (idRol != 8)
+            {
+                // Retornamos éxito falso para que el JS no actualice la UI como si se hubiera asignado
+                return Json(new { success = false, mensaje = "Solo personal de bodega puede tomar reclamos." });
+            }
             bool ok = _negocioAuditoria.AsignarYProcesar(idAuditoriaZ, idUsuarioSesion, out string mensaje);
             return Json(new { success = ok, mensaje = mensaje });
         }

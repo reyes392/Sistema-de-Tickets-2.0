@@ -148,7 +148,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var t in Model)
+                        @*@foreach (var t in Model)
                         {
                             <tr id="row-@t.IdTicket">
                                 <td>
@@ -173,7 +173,7 @@
                                     </button>
                                 </td>
                             </tr>
-                        }
+                        }*@
                     </tbody>
                 </table>
             </div>
@@ -373,30 +373,87 @@
         const nombreTecnicoLogueado = '@ViewBag.NombreUsuarioLogueado';
         const rolUsuarioLogueado = parseInt('@ViewBag.RolUsuario') || 0;
 
-
+        // Al inicio de tu script, con las otras variables globales
+        let tablaTickets = null;
 
 
 
         $(document).ready(function () {
             // 1. Inicializar DataTable
-            $('#tblTickets').DataTable({
-                pageLength: 10,
-                lengthMenu: [5, 10, 25, 50],
-                order: [],
-                language: {
-                    lengthMenu: "Mostrar _MENU_ registros",
-                    zeroRecords: "No se encontraron datos",
-                    info: "Página _PAGE_ de _PAGES_",
-                    infoEmpty: "No hay registros",
-                    infoFiltered: "(filtrado de _MAX_ registros)",
-                    search: "Buscar:",
-                    paginate: {
-                        first: "Primero",
-                        last: "Último",
-                        next: "Siguiente",
-                        previous: "Anterior"
+            //$('#tblTickets').DataTable({
+            //    pageLength: 10,
+            //    lengthMenu: [5, 10, 25, 50],
+            //    order: [],
+            //    language: {
+            //        lengthMenu: "Mostrar _MENU_ registros",
+            //        zeroRecords: "No se encontraron datos",
+            //        info: "Página _PAGE_ de _PAGES_",
+            //        infoEmpty: "No hay registros",
+            //        infoFiltered: "(filtrado de _MAX_ registros)",
+            //        search: "Buscar:",
+            //        paginate: {
+            //            first: "Primero",
+            //            last: "Último",
+            //            next: "Siguiente",
+            //            previous: "Anterior"
+            //        }
+            //    }
+            //});
+            // Inicializar DataTable con AJAX
+           tablaTickets = $('#tblTickets').DataTable({
+               destroy: true,
+            /*   processing: true, // Muestra el indicador de "Procesando..." al centro*/
+               serverSide: false,
+               order: [],        // <--- CRUCIAL: Esto hace que respete el orden de tu SQL
+                ajax: {
+                    url: '@Url.Action("ObtenerTicketsTabla", "Home")',
+                    type: 'GET',
+                    dataSrc: ''
+                },
+                columns: [
+                    { data: 'idTicket' }, // ID
+                 
+                    { data: 'ususarioSolicitador' }, // Solicitante
+                    { data: 'incidencia' },          // Incidencia
+                    { data: 'nivelUrgencia' },       // Urgencia
+                    {
+                        data: 'registro',            // Fecha
+                        render: function(data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
+                        }
+                    },
+                    {
+                        data: 'estado', // Estado con Badge
+                        render: function (data, type, row) {
+                            let color = (data === "Pendiente") ? "bg-warning text-dark" : (data === "Cerrado" ? "bg-success" : "bg-info");
+                            return `<span class="badge ${color}">${data}</span>`;
+                        }
+                    },
+                    { data: 'usuarioAsignado' }, // Solicitante
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (data, type, row) {
+                            // Preparamos el objeto para el botón "Ver" igual que antes
+                            let jsonString = JSON.stringify(row).replace(/"/g, '&quot;');
+                            return `
+                                <div class="position-relative d-inline-block">
+                                    <button class="btn btn-sm btn-primary btn-ver" data-info="${jsonString}">
+                                        <i class="fas fa-eye"></i> Ver
+                                    </button>
+                                    <span id="notif-${row.idTicket}" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+                                        !
+                                    </span>
+                                </div>`;
+                        }
                     }
-                }
+                ],
+                drawCallback: function() {
+                    // Cada vez que la tabla se redibuje (cambio de página, búsqueda),
+                    // sincronizamos los badges de notificaciones
+                    sincronizarEstadosChatMasivo();
+                },
+                language: { url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
             });
             // Detectar cuando el usuario cambia a la pestaña de Chat
             $('button[data-bs-target="#chat"]').on('shown.bs.tab', function (e) {
@@ -439,30 +496,7 @@
                 data: JSON.stringify(idsTickets),
                 success: function (estados) {
                     // Primero ocultamos todos los badges de los tickets procesados para resetear
-                    // (Opcional, según prefieras el comportamiento visual)
 
-                    //estados.forEach(res => {
-                    //    const id = res.idTicket;
-                    //    const clave = `visto_ticket_u${idUsuarioLogueado}_t${id}`; // Misma clave unificada
-                    //    const guardado = localStorage.getItem(clave);
-                    //    const ultimoVisto = guardado ? parseInt(guardado) : 0;
-
-                    //    const ticketAbiertoId = ticketSeleccionado?.IdTicket || ticketSeleccionado?.idTicket;
-                    //    const estaViendoChat = (id === ticketAbiertoId && $("#chatTab").hasClass("active"));
-
-                    //    if (estaViendoChat) {
-                    //        // Si lo está viendo, el "visto" es igual al "ultimoId" del servidor
-                    //        localStorage.setItem(clave, res.ultimoId);
-                    //        $(`#notif-${id}`).addClass("d-none");
-                    //    }
-                    //    else if (res.ultimoId > ultimoVisto && res.idAutor !== idUsuarioLogueado) {
-                    //        $(`#notif-${id}`).removeClass("d-none");
-                    //    } else {
-                    //        $(`#notif-${id}`).addClass("d-none");
-                    //    }
-
-                    //    ultimoIdComentarioVisto[id] = Math.max(res.ultimoId, ultimoVisto);
-                    //});
                     estados.forEach(res => {
                         const id = res.idTicket;
                         const clave = `visto_ticket_u${idUsuarioLogueado}_t${id}`;
@@ -541,15 +575,24 @@
 
         // --- 5. FUNCIÓN: REFRESCO SILENCIOSO DE TABLA ---
         function refrescarTablaTickets() {
-            // Pedimos el HTML de la página actual por debajo
-            $.get(window.location.href, function (data) {
-                // Extraemos solo el contenido del <tbody> de la respuesta
-                const nuevoContenido = $(data).find("#tblTickets tbody").html();
-                // Lo reemplazamos en nuestra tabla visible
-                $("#tblTickets tbody").html(nuevoContenido);
+            //// Pedimos el HTML de la página actual por debajo
+            //$.get(window.location.href, function (data) {
+            //    // Extraemos solo el contenido del <tbody> de la respuesta
+            //    const nuevoContenido = $(data).find("#tblTickets tbody").html();
+            //    // Lo reemplazamos en nuestra tabla visible
+            //    $("#tblTickets tbody").html(nuevoContenido);
+            //    actualizarContadoresCards();
+            //    console.log("Tabla actualizada dinámicamente.");
+            //});
+            if (tablaTickets) {
+                // .ajax.reload() hace todo el trabajo pesado por ti.
+                // El primer parámetro (null) es para mantener la posición del scroll.
+                // El segundo (false) es para que no se regrese a la página 1 si el usuario estaba en la 3.
+                tablaTickets.ajax.reload(null, false);
+
                 actualizarContadoresCards();
-                console.log("Tabla actualizada dinámicamente.");
-            });
+                console.log("Tabla recargada vía JSON exitosamente.");
+            }
         }
 
         // --- 6. EVENTO: VER DETALLE (CLICK EN TABLA) ---
@@ -586,7 +629,7 @@
             }
         });
 
-   
+
 
         function verDetalle(ticket) {
             if (!ticket) return;
@@ -1150,7 +1193,7 @@
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
             // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados); 
+            // $("#card-total-cerrados").text(cerrados);
         }
     </script>
 }

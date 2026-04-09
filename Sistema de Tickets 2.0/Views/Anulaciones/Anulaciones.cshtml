@@ -146,7 +146,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var t in Model)
+                        @*@foreach (var t in Model)
                         {
                             <tr id="row-@t.IdAnulacion">
                                 <td>
@@ -170,7 +170,7 @@
                                     </button>
                                 </td>
                             </tr>
-                        }
+                        }*@
                     </tbody>
                 </table>
             </div>
@@ -350,27 +350,83 @@
 
 
 
-
+        let tablaAnulaciones = null;
 
         $(document).ready(function () {
             // 1. Inicializar DataTable
-            $('#tblTickets').DataTable({
-                pageLength: 10,
-                lengthMenu: [5, 10, 25, 50],
-                order: [],
-                language: {
-                    lengthMenu: "Mostrar _MENU_ registros",
-                    zeroRecords: "No se encontraron datos",
-                    info: "Página _PAGE_ de _PAGES_",
-                    infoEmpty: "No hay registros",
-                    infoFiltered: "(filtrado de _MAX_ registros)",
-                    search: "Buscar:",
-                    paginate: {
-                        first: "Primero",
-                        last: "Último",
-                        next: "Siguiente",
-                        previous: "Anterior"
+            //$('#tblTickets').DataTable({
+            //    pageLength: 10,
+            //    lengthMenu: [5, 10, 25, 50],
+            //    order: [],
+            //    language: {
+            //        lengthMenu: "Mostrar _MENU_ registros",
+            //        zeroRecords: "No se encontraron datos",
+            //        info: "Página _PAGE_ de _PAGES_",
+            //        infoEmpty: "No hay registros",
+            //        infoFiltered: "(filtrado de _MAX_ registros)",
+            //        search: "Buscar:",
+            //        paginate: {
+            //            first: "Primero",
+            //            last: "Último",
+            //            next: "Siguiente",
+            //            previous: "Anterior"
+            //        }
+            //    }
+            //});
+            tablaAnulaciones = $('#tblTickets').DataTable({
+                destroy: true,
+                processing: true,
+                order: [[0, "desc"]], // Ordenar por ID descendente por defecto
+                ajax: {
+                    url: '@Url.Action("ObtenerAnulacionesTabla", "Anulaciones")',
+                    type: 'GET',
+                    dataSrc: ''
+                },
+                columns: [
+                    {
+                        data: 'idAnulacion',
+                        render: function(data, type, row) {
+                            return `
+                                <span class="fw-bold">${data}</span>
+                                <span id="notif-${data}" class="badge rounded-pill bg-danger d-none notif-badge">
+                                    <i class="fas fa-comment"></i>
+                                </span>`;
+                        }
+                    },
+                    { data: 'usuarioSolicitador' },
+                    { data: 'incidencia' },
+                    {
+                        data: 'registro',
+                        render: function(data) { return data ? data : '---'; }
+                    },
+                    {
+                        data: 'estado',
+                        render: function (data) {
+                            let color = (data === "Pendiente") ? "bg-warning text-dark" : (data === "Cerrado" ? "bg-success" : "bg-info");
+                            return `<span class="badge ${color}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        className: 'text-center',
+                        render: function (data, type, row) {
+                            // Convertimos el objeto row a string para el botón Ver
+                            let jsonString = JSON.stringify(row).replace(/"/g, '&quot;');
+                            return `
+                                <button class="btn btn-sm btn-outline-primary btn-ver" data-info='${jsonString}'>
+                                    <i class="fas fa-eye"></i> Ver
+                                </button>`;
+                        }
                     }
+                ],
+                drawCallback: function() {
+                    // Sincroniza estados de chat si tienes la función
+                    if (typeof sincronizarEstadosChatMasivo === "function") sincronizarEstadosChatMasivo();
+                },
+                language: {
+                    processing: '<div class="spinner-border text-primary" role="status"></div>',
+                    url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
                 }
             });
             // Detectar cuando el usuario cambia a la pestaña de Chat
@@ -476,15 +532,19 @@
 
         // --- 5. FUNCIÓN: REFRESCO SILENCIOSO DE TABLA ---
         function refrescarTablaTickets() {
-            // Pedimos el HTML de la página actual por debajo
-            $.get(window.location.href, function (data) {
-                // Extraemos solo el contenido del <tbody> de la respuesta
-                const nuevoContenido = $(data).find("#tblTickets tbody").html();
-                // Lo reemplazamos en nuestra tabla visible
-                $("#tblTickets tbody").html(nuevoContenido);
-                actualizarContadoresCards();
-                console.log("Tabla actualizada dinámicamente.");
-            });
+            //// Pedimos el HTML de la página actual por debajo
+            //$.get(window.location.href, function (data) {
+            //    // Extraemos solo el contenido del <tbody> de la respuesta
+            //    const nuevoContenido = $(data).find("#tblTickets tbody").html();
+            //    // Lo reemplazamos en nuestra tabla visible
+            //    $("#tblTickets tbody").html(nuevoContenido);
+            //    actualizarContadoresCards();
+            //    console.log("Tabla actualizada dinámicamente.");
+            //});
+            if (tablaAnulaciones) {
+                tablaAnulaciones.ajax.reload(null, false);
+                console.log("Tabla de anulaciones sincronizada.");
+            }
         }
 
         // --- 6. EVENTO: VER DETALLE (CLICK EN TABLA) ---
@@ -984,7 +1044,7 @@
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
             // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados); 
+            // $("#card-total-cerrados").text(cerrados);
         }
     </script>
 }

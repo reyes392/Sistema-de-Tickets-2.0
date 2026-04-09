@@ -1,4 +1,5 @@
-﻿using Capa_Entidad.Canjes;
+﻿using Capa_Datos.Canjes;
+using Capa_Entidad.Canjes;
 using Capa_Entidad.ReclamosBodega;
 using Capa_Entidad.Tickets;
 using Capa_Negocios.Canjes;
@@ -160,29 +161,52 @@ namespace Sistema_de_Tickets_2._0.Controllers
         #endregion
 
         #region  VISTA Y CRUD DE CANJES
-        [Permiso("CANJES_VER")]
-        public IActionResult Canjes()
+        [HttpGet]
+        public JsonResult ObtenerCanjesTabla()
         {
-            ViewBag.Incidencias = _canjesIncidencias.Listar();
-
             int idUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             int idRol = HttpContext.Session.GetInt32("IdRol") ?? 0;
 
-            ViewBag.IdUsuarioLogueado = idUsuarioLogueado;
-            ViewBag.RolUsuario = idRol;
-            ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            // 1. Obtenemos la lista base
             var lista = _canjes.Listar(idUsuarioLogueado, idRol);
 
-            // 2. Si el rol es 6, filtramos la lista en memoria
+            // Mantenemos tu lógica de filtrado para el Rol 6
             if (idRol == 6)
             {
-                // Solo permitimos IdEstado 6 (Autorizado) y 7 (Anulado)
                 lista = lista.Where(c => c.IdEstado == 6 || c.IdEstado == 7).ToList();
             }
 
-            return View(lista);
+            return Json(lista);
+        }
+        [Permiso("CANJES_VER")]
+        public IActionResult Canjes()
+        {
+            //ViewBag.Incidencias = _canjesIncidencias.Listar();
+
+            //int idUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            //int idRol = HttpContext.Session.GetInt32("IdRol") ?? 0;
+
+            //ViewBag.IdUsuarioLogueado = idUsuarioLogueado;
+            //ViewBag.RolUsuario = idRol;
+            //ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            //// 1. Obtenemos la lista base
+            //var lista = _canjes.Listar(idUsuarioLogueado, idRol);
+
+            //// 2. Si el rol es 6, filtramos la lista en memoria
+            //if (idRol == 6)
+            //{
+            //    // Solo permitimos IdEstado 6 (Autorizado) y 7 (Anulado)
+            //    lista = lista.Where(c => c.IdEstado == 6 || c.IdEstado == 7).ToList();
+            //}
+
+            //return View(lista);
+            // Solo cargamos catálogos y datos de sesión para la UI
+            ViewBag.Incidencias = _canjesIncidencias.Listar();
+            ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            return View(new List<E_Canje>()); // Vista vacía, se llena por AJAX
         }
         // --- MÉTODO PARA GUARDAR (INSERT/UPDATE) ---
 
@@ -230,16 +254,18 @@ namespace Sistema_de_Tickets_2._0.Controllers
         //    bool success = _canjes.GuardarCanje(obj, out mensaje);
         //    return Json(new { success = success, mensaje = mensaje });
         //}
-        //[HttpGet]
-        //public JsonResult ObtenerAdjuntos(int idCanjes)
-        //{
-        //    // Llamamos a la capa de negocios que a su vez llama a la de datos
-        //    // El método Listar(idTicket) ya lo tienes definido en CN_Archivos
-        //    var lista = _archivos.Listar(idCanjes);
 
-        //    // Retornamos la lista en formato JSON para que el JS la procese
-        //    return Json(lista);
-        //}
+
+        [HttpGet]
+        public JsonResult ObtenerAdjuntos(int idCanjes)
+        {
+            // Llamamos a la capa de negocios que a su vez llama a la de datos
+            // El método Listar(idTicket) ya lo tienes definido en CN_Archivos
+            var lista = _archivos.Listar(idCanjes);
+
+            // Retornamos la lista en formato JSON para que el JS la procese
+            return Json(lista);
+        }
         [HttpPost]
         public JsonResult GuardarCanje(IFormCollection form)
         {

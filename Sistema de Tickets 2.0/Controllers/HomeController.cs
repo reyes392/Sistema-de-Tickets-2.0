@@ -353,34 +353,61 @@ namespace Sistema_de_Tickets_2._0.Controllers
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         ///GESTION DE TICKETS
         /////////////////////////////////////////////////////////////////////////////////////////////////////
-     
-        [Permiso("TICKET_VER")]
-        public IActionResult Tickets()
+        [HttpGet]
+        public JsonResult ObtenerTicketsTabla()
         {
-            ViewBag.Cajas = _negocioCajas.Listar();
-            ViewBag.Incidencias = _negocioTiposIncidenciasTickets.Listar();
-            ViewBag.Estados = _negocioEstados.ListarEstados();
-
-            // Obtenemos datos de sesión
             int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-            string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            // Pasamos a la vista para el JS
-            ViewBag.IdUsuarioLogueado = idLogueado;
-            ViewBag.RolUsuario = idRolLogueado;
-            ViewBag.NombreUsuarioLogueado = nombreLogueado;
 
             var lista = _negocioTickets.Listar();
 
-            // LÓGICA DE FILTRADO SOLICITADA:
-            // Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
+            // Aplicamos la misma lógica de filtrado que ya tienes
             if (idRolLogueado != 1 && idRolLogueado != 3)
             {
                 lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
             }
 
-            return View(lista);
+            return Json(lista);
+        }
+
+        [Permiso("TICKET_VER")]
+        public IActionResult Tickets()
+        {
+            //ViewBag.Cajas = _negocioCajas.Listar();
+            //ViewBag.Incidencias = _negocioTiposIncidenciasTickets.Listar();
+            //ViewBag.Estados = _negocioEstados.ListarEstados();
+
+            //// Obtenemos datos de sesión
+            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            //string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            //// Pasamos a la vista para el JS
+            //ViewBag.IdUsuarioLogueado = idLogueado;
+            //ViewBag.RolUsuario = idRolLogueado;
+            //ViewBag.NombreUsuarioLogueado = nombreLogueado;
+
+            //var lista = _negocioTickets.Listar();
+
+            //// LÓGICA DE FILTRADO SOLICITADA:
+            //// Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
+            //if (idRolLogueado != 1 && idRolLogueado != 3)
+            //{
+            //    lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
+            //}
+
+            //return View(lista);
+            ViewBag.Cajas = _negocioCajas.Listar();
+            ViewBag.Incidencias = _negocioTiposIncidenciasTickets.Listar();
+            ViewBag.Estados = _negocioEstados.ListarEstados();
+
+            ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;
+            ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+
+            // Devolvemos la vista con una lista vacía o simplemente sin modelo 
+            // porque el DataTable se encargará de pedir los datos por AJAX
+            return View(new List<E_Tickets>());
         }
     
         [Permiso("TICKET_CREAR_EDITAR")]
