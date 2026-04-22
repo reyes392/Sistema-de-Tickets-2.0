@@ -7,6 +7,7 @@ using Capa_Negocios.Tickets;
 using Microsoft.AspNetCore.Mvc;
 using Sistema_de_Tickets_2._0.Filter;
 using System;
+using System.Globalization; // Asegúrate de tener este using al inicio del archivo
 
 namespace Sistema_de_Tickets_2._0.Controllers
 {
@@ -22,13 +23,13 @@ namespace Sistema_de_Tickets_2._0.Controllers
         private readonly Capa_Negocios.Canjes.CN_Archivos _archivos;
         private readonly Capa_Negocios.Canjes.CN_Comentarios _comentarios;
         private readonly Capa_Negocios.Tickets.CN_Roles _roles;
-
+        private readonly Capa_Negocios.Tickets.CN_Cajas _cajas;
 
 
 
         // UN SOLO CONSTRUCTOR PARA TODO
         public CanjesController(ILogger<CanjesController> logger, CN_Usuarios usuarioNegocio,Capa_Negocios.Canjes.CN_AsignacionCanjes canjesNegocio,CN_TiposIncidenciasCanjes canjesIncidencias,CN_Estados estadoNegocio, CN_Canjes canjes,
-            Capa_Negocios.Canjes.CN_Archivos archivos,Capa_Negocios.Canjes.CN_Comentarios comentarios,Capa_Negocios.Tickets.CN_Roles roles
+            Capa_Negocios.Canjes.CN_Archivos archivos,Capa_Negocios.Canjes.CN_Comentarios comentarios,Capa_Negocios.Tickets.CN_Roles roles, CN_Cajas cajas
             )
         {
             _logger = logger;
@@ -40,6 +41,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
             _archivos=archivos;
             _comentarios=comentarios;
             _roles = roles;
+            _cajas=cajas;   
      
 
         }
@@ -180,24 +182,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [Permiso("CANJES_VER")]
         public IActionResult Canjes()
         {
-            //ViewBag.Incidencias = _canjesIncidencias.Listar();
-
-            //int idUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            //int idRol = HttpContext.Session.GetInt32("IdRol") ?? 0;
-
-            //ViewBag.IdUsuarioLogueado = idUsuarioLogueado;
-            //ViewBag.RolUsuario = idRol;
-            //ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            //// 1. Obtenemos la lista base
-            //var lista = _canjes.Listar(idUsuarioLogueado, idRol);
-
-            //// 2. Si el rol es 6, filtramos la lista en memoria
-            //if (idRol == 6)
-            //{
-            //    // Solo permitimos IdEstado 6 (Autorizado) y 7 (Anulado)
-            //    lista = lista.Where(c => c.IdEstado == 6 || c.IdEstado == 7).ToList();
-            //}
+          
 
             //return View(lista);
             // Solo cargamos catálogos y datos de sesión para la UI
@@ -205,55 +190,12 @@ namespace Sistema_de_Tickets_2._0.Controllers
             ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;
             ViewBag.NombreUsuarioLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
+            ViewBag.Cajas=_cajas.Listar();
 
             return View(new List<E_Canje>()); // Vista vacía, se llena por AJAX
         }
         // --- MÉTODO PARA GUARDAR (INSERT/UPDATE) ---
 
-        //[HttpPost]
-        //public JsonResult GuardarCanje(IFormCollection form)
-        //{
-        //    string mensaje = string.Empty;
-        //    int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
-
-        //    if (idUsuarioSesion == null) return Json(new { success = false, mensaje = "Sesión expirada." });
-
-        //    E_Canje obj = new E_Canje();
-        //    obj.IdCanje = int.Parse(form["canjes.IdCanje"]);
-        //    obj.IdTipoIncidenciaCanjes = int.Parse(form["canjes.IdTipoIncidencia"]);
-        //    obj.Resolucion = form["canjes.Resolucion"];
-        //    obj.IdEstado = string.IsNullOrEmpty(form["canjes.IdEstado"]) ? 0 : int.Parse(form["canjes.IdEstado"]);
-        //    // --- NUEVO MAPEO: Capturamos la descripción del problema ---
-        //    obj.DescripcionProblema = form["canjes.DescripcionProblema"];
-        //    if (obj.IdCanje == 0)
-        //    {
-        //        obj.IdUsuarioSolicitador = idUsuarioSesion.Value;
-        //    }
-        //    else
-        //    {
-        //        // --- NUEVO AJUSTE: Si el estado es 5 (En Proceso), se lo asignamos al usuario actual ---
-        //        if (obj.IdEstado == 5)
-        //        {
-        //            obj.IdUsuarioAsignado = idUsuarioSesion.Value;
-        //        }
-
-        //        // Si el estado es 6 (Autorizado), asignamos autorizador
-        //        if (obj.IdEstado == 6)
-        //        {
-        //            obj.IdUsuarioAutorizador = idUsuarioSesion.Value;
-        //            // Opcional: Si quieres asegurar que el asignado se mantenga o se actualice
-        //            obj.IdUsuarioAsignado = idUsuarioSesion.Value;
-        //        }
-        //        // Si el estado es 7 (Anulado)
-        //        else if (obj.IdEstado == 7)
-        //        {
-        //            obj.IdUsuarioAnulador = idUsuarioSesion.Value;
-        //        }
-        //    }
-
-        //    bool success = _canjes.GuardarCanje(obj, out mensaje);
-        //    return Json(new { success = success, mensaje = mensaje });
-        //}
 
 
         [HttpGet]
@@ -266,23 +208,34 @@ namespace Sistema_de_Tickets_2._0.Controllers
             // Retornamos la lista en formato JSON para que el JS la procese
             return Json(lista);
         }
+     
         [HttpPost]
-        public JsonResult GuardarCanje(IFormCollection form)
+        public JsonResult GuardarCanje(IFormCollection form, List<IFormFile> archivos)
         {
-            int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
+            // 1. Recuperamos IDs de sesión y variables básicas
+            int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
+            int idLogueado = idUsuarioSesion ?? 0;
             int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
             string mensaje = string.Empty;
-            int? idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario");
+            string accion = form["Accion"]; // Capturamos la acción enviada desde el JS
 
-            if (idUsuarioSesion == null) return Json(new { success = false, mensaje = "Sesión expirada." });
+            if (idUsuarioSesion == null)
+                return Json(new { success = false, mensaje = "La sesión ha expirado." });
 
+            // 2. Mapeo de datos desde el Form (incluyendo campos financieros y nuevos)
             E_Canje obj = new E_Canje();
-            obj.IdCanje = int.Parse(form["canjes.IdCanje"]);
+            // Esta línea es VITAL para que el UPDATE sepa a qué fila ir
+            obj.IdCanje = string.IsNullOrEmpty(form["canjes.IdCanje"]) ? 0 : int.Parse(form["canjes.IdCanje"]);
             obj.IdTipoIncidenciaCanjes = int.Parse(form["canjes.IdTipoIncidencia"]);
             obj.Resolucion = form["canjes.Resolucion"];
             obj.IdEstado = string.IsNullOrEmpty(form["canjes.IdEstado"]) ? 0 : int.Parse(form["canjes.IdEstado"]);
             obj.DescripcionProblema = form["canjes.DescripcionProblema"];
+            obj.Monto = string.IsNullOrEmpty(form["canjes.Monto"]) ? 0 : decimal.Parse(form["canjes.Monto"]);
+            obj.NumeroFactura = form["canjes.NumeroFactura"];
+            obj.FechaFactura = string.IsNullOrEmpty(form["canjes.FechaFactura"]) ? (DateTime?)null : DateTime.Parse(form["canjes.FechaFactura"]);
+            obj.IdCaja = string.IsNullOrEmpty(form["canjes.IdCaja"]) ? 0 : int.Parse(form["canjes.IdCaja"]);
 
+            // 3. Lógica de asignación de usuarios según el flujo
             if (obj.IdCanje == 0)
             {
                 obj.IdUsuarioSolicitador = idUsuarioSesion.Value;
@@ -302,22 +255,51 @@ namespace Sistema_de_Tickets_2._0.Controllers
                 }
             }
 
+            // 4. Guardado principal en Base de Datos
             bool success = _canjes.GuardarCanje(obj, out mensaje);
 
-            // --- LÓGICA DE CORREO INTEGRADA ---
+            // 5. PROCESAMIENTO DE ARCHIVOS (Solo si el registro fue exitoso)
+            if (success && archivos != null && archivos.Count > 0)
+            {
+                try
+                {
+                    // Ruta destino: wwwroot/uploads/canjes
+                    string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "canjes");
+
+                    foreach (var file in archivos)
+                    {
+                        // Guardar archivo físico usando tu clase de negocio CN_Archivos
+                        string nombreSistema = _archivos.GuardarFisico(file, folderPath);
+
+                        var entidadArchivo = new E_Archivos
+                        {
+                            IdReferencia = obj.IdCanje, // Usamos el ID generado o actualizado
+                            NombreOriginal = file.FileName,
+                            NombreSistema = nombreSistema,
+                            Extension = Path.GetExtension(file.FileName),
+                            Ruta = "/uploads/canjes/" + nombreSistema
+                        };
+
+                        // Registrar relación en la tabla de archivos
+                        _archivos.RegistrarEnBaseDatos(entidadArchivo);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    mensaje += " (Aviso: Registro guardado, pero hubo un problema al subir archivos: " + ex.Message + ")";
+                }
+            }
+
+            // 6. Lógica de Envío de Correo (Hilo secundario para no bloquear la respuesta)
             if (success && (obj.IdEstado == 6 || obj.IdEstado == 7))
             {
-                // CAPTURA de variables del Request
-                string esquema = Request.Scheme;
-                string host = Request.Host.Value;
-                string urlBase = $"{esquema}://{host}";
                 int idCanjeCapturado = obj.IdCanje;
                 int estadoFinal = obj.IdEstado;
 
                 Task.Run(() => {
                     try
                     {
-                        // Obtenemos info completa del canje
+                        // Obtenemos info completa del canje para el cuerpo del correo
                         var infoCanje = _canjes.Listar(idLogueado, idRolLogueado).FirstOrDefault(c => c.IdCanje == idCanjeCapturado);
 
                         if (infoCanje != null)
@@ -329,6 +311,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
                                 string statusText = (estadoFinal == 6) ? "AUTORIZADO" : "ANULADO";
                                 string colorStatus = (estadoFinal == 6) ? "#27ae60" : "#c0392b";
                                 string asunto = $"Canje #{infoCanje.IdCanje} - {statusText}";
+                                string montoFormateado = infoCanje.Monto?.ToString("N2") ?? "0.00";
 
                                 string cuerpo = $@"
                         <div style='font-family: sans-serif; border: 1px solid #ddd; border-radius: 10px; padding: 20px; max-width: 600px;'>
@@ -337,48 +320,27 @@ namespace Sistema_de_Tickets_2._0.Controllers
                             <p>Tu solicitud de canje ha sido procesada con el siguiente resultado:</p>
                             
                             <table style='width: 100%; border-collapse: collapse; margin: 15px 0;'>
-
                                 <tr style='background: #f8f9fa;'>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>N° de Regsitro:</strong></td>
+                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>N° de Registro:</strong></td>
                                     <td style='padding: 8px; border: 1px solid #eee;'>#{infoCanje.IdCanje}</td>
                                 </tr>
-                                 <tr>
-                                       <td style='padding: 8px; border: 1px solid #eee;'><strong>Atendido por:</strong></td>
-                                       <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.NombreAsignado}</td>
-             
                                 <tr>
+                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Atendido por:</strong></td>
+                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.NombreAsignado}</td>
                                 </tr>
-                                   <tr>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Fecha de Registro:</strong></td>
-                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.FechaRegistro}</td>
+                                <tr style='background: #f8f9fa;'>
+                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Factura:</strong></td>
+                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.NumeroFactura} (Caja: {infoCanje.NombreCaja})</td>
                                 </tr>
-                                 <tr>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Descripcion del Problema:</strong></td>
-                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.DescripcionProblema}</td>
+                                <tr>
+                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Monto:</strong></td>
+                                    <td style='padding: 8px; border: 1px solid #eee;'>C$ {montoFormateado}</td>
                                 </tr>
                                 <tr style='background: #f8f9fa;'>
                                     <td style='padding: 8px; border: 1px solid #eee;'><strong>Resolución:</strong></td>
                                     <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.Resolucion}</td>
-                               </tr>
-                              <tr style='background: #f8f9fa;'>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Resolución:</strong></td>
-                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.NombreAutorizador}</td>
-                               </tr>
-                                 <tr style='background: #f8f9fa;'>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Resolución:</strong></td>
-                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.FechaAutorizado}</td>
-                               </tr>
-                               </tr>
-                                 <tr style='background: #f8f9fa;'>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Resolución:</strong></td>
-                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.NombreAnulador}</td>
-                               </tr>
-                               <tr style='background: #f8f9fa;'>
-                                    <td style='padding: 8px; border: 1px solid #eee;'><strong>Resolución:</strong></td>
-                                    <td style='padding: 8px; border: 1px solid #eee;'>{infoCanje.FechaAnulado}</td>
-                               </tr>
+                                </tr>
                             </table>
-
                             <p style='margin-top: 20px; font-size: 0.8em; color: #7f8c8d; text-align: center;'>
                                 Gestión de Canjes - Farmacias Saba Nicaragua
                             </p>
@@ -388,7 +350,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
                             }
                         }
                     }
-                    catch { /* No interrumpir el flujo principal */ }
+                    catch { /* Silenciar errores en hilo secundario */ }
                 });
             }
 
@@ -549,6 +511,8 @@ namespace Sistema_de_Tickets_2._0.Controllers
             // 3. Pasar la lista a la vista
             return View(lista);
         }
+
+
         #endregion
     }
 }

@@ -36,6 +36,8 @@ namespace Capa_Entidad.Tickets
         public string? RutaServidor { get; set; }
         public string? Extension { get; set; }
         public string? NombreArchivo { get; set; }
+        public DateTime? FechaTicket { get; set; } // Nuevo
+        public string? Turno { get; set; }         // Nuevo
 
     }
 }

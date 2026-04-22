@@ -31,5 +31,8 @@ namespace Capa_Entidad.Anulaciones
         public string? RutaServidor { get; set; }
         public string? Extension { get; set; }
         public string? NombreArchivo { get; set; }
+        public decimal Monto { get; set; }
+        public string? NumeroFactura { get; set; }
+        public DateTime? FechaFactura { get; set; }
     }
 }

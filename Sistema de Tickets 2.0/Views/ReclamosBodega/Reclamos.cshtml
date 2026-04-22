@@ -98,9 +98,57 @@
             opacity: 1;
         }
     }
+
+
+    /* ===== TEXTO GENERAL ===== */
+    body {
+        color: #212529;
+    }
+
+    /* Labels y títulos */
+    label, .form-label, strong {
+        color: #1a1a1a;
+    }
+
+    /* Texto secundario */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== TABLAS (SOLO TEXTO) ===== */
+    .table td {
+        color: #2c2c2c;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #ffffff; /* asegura buen contraste en header oscuro */
+    }
+
+    /* ===== DETALLE DERECHO ===== */
+    #seccionDetalle {
+        background-color: #f4f6f9;
+    }
+
+    /* Inputs */
+    .form-control {
+        color: #000;
+    }
+
+    /* Textarea readonly */
+    textarea[readonly] {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    /* ===== BOTONES ===== */
+    .btn {
+        font-weight: 500;
+    }
+
 </style>
 
-@if (ViewBag.RolUsuario == 4) // Cambia el 1 por el ID que corresponda a "Administrador"
+@if (ViewBag.RolUsuario == 4 || ViewBag.RolUsuario == 1) // Cambia el 1 por el ID que corresponda a "Administrador"
 {
     <div class="row mb-4">
         <div class="col-md-3">
@@ -225,11 +273,11 @@
                     </div>
 
                     <div class="row g-2 mb-4 border-bottom pb-3">
-                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong># Requisa:</strong> <span id="txtNrequisa" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Fecha de Requisa:</strong> <span id="txtFechaRequisa" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Asignado a :</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
+                        <div class="col-6 small text-primary"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong># Requisa:</strong> <span id="txtNrequisa" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Fecha de Requisa:</strong> <span id="txtFechaRequisa" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Asignado a :</strong> <span id="txtAsignado" class="d-block fw-bold"></span></div>
 
                     </div>
 
@@ -238,7 +286,7 @@
                         <textarea id="txtDetalleProblema" class="form-control bg-light" rows="3" readonly></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="fw-bold small text-success">Resolución Técnica:</label>
+                        <label class="fw-bold small">Resolución Técnica:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
                     </div>
 
@@ -390,16 +438,27 @@
         let tablaReclamos = null;
 
         $(document).ready(function () {
-            //$('#tblReclamos').DataTable({
-            //    pageLength: 10,
-            //    order: [],
-            //    language: { url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json" }
-            //});
+            // Clonar header para filtros
+            $('#tblReclamos thead tr').clone(true).appendTo('#tblReclamos thead');
+
+            $('#tblReclamos thead tr:eq(1) th').each(function (i) {
+
+                // Evitar columna de botón (Acción)
+                if (i === 5) {
+                    $(this).html('');
+                    return;
+                }
+
+                var title = $(this).text().trim();
+
+                $(this).html(`<input type="text" class="form-control form-control-sm" placeholder="${title}" />`);
+            });
             // Inicializar DataTable con AJAX
             tablaReclamos = $('#tblReclamos').DataTable({
                 destroy: true,
                /* processing: true, // Muestra el cargando al centro*/
                 order: [],        // Respeta el orden de SQL
+                orderCellsTop: true, // 🔥 CLAVE
                 ajax: {
                     url: '@Url.Action("ObtenerReclamosTabla", "ReclamosBodega")', // Ajusta "Home" por el nombre de tu controlador
                     type: 'GET',
@@ -410,17 +469,21 @@
                         data: 'idReclamo',
                         render: function(data, type, row) {
                             return `
-                                <span class="fw-bold">${data}</span>
-                                <span id="notif-${data}" class="badge rounded-pill bg-danger d-none notif-badge">
-                                    <i class="fas fa-comment"></i>
-                                </span>`;
+                                <div class="d-flex align-items-center">
+                                    <span id="notif-${data}" class="badge badge-danger rounded-circle d-none mr-2 shadow-sm" style="padding: 5px 7px;">
+                                        <i class="fas fa-envelope" style="font-size: 0.7rem;"></i>
+                                    </span>
+                                    <span class="fw-bold text-primary">${data}</span>
+                             </div>`;
                         }
                     },
                     { data: 'usuarioSolicitador' },
                     { data: 'tipoIncidenciaReclamo' },
                     {
                         data: 'registro',
-                        render: function(data) { return data ? data : '---'; }
+                        render: function (data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
+                        }
                     },
                     {
                         data: 'estado',
@@ -442,14 +505,33 @@
                         }
                     }
                 ],
-                drawCallback: function() {
+                drawCallback: function () {
                     // Sincroniza badges de chat después de cargar datos
                     if (typeof inicializarEstadosChats === "function") inicializarEstadosChats();
+
+                    // IMPORTANTE: Actualizar las tarjetas cada vez que la tabla se redibuja
+                    actualizarContadoresCards();
                 },
                 language: {
                     processing: '<div class="spinner-border text-primary" role="status"></div>',
                     url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
                 }
+            });
+
+            // Activar filtros por columna
+            $('#tblReclamos thead tr:eq(1) th').each(function (i) {
+
+                $('input', this).on('keyup change', function () {
+
+                    if (tablaReclamos.column(i).search() !== this.value) {
+                        tablaReclamos
+                            .column(i)
+                            .search(this.value)
+                            .draw();
+                    }
+
+                });
+
             });
             // --- 2. INICIALIZACIÓN MASIVA ---
             inicializarEstadosChats();
@@ -568,35 +650,7 @@
         }
 
         // --- 6. EVENTO: VER DETALLE ---
-        @*$(document).on("click", ".btn-ver", function () {
-            let $btn = $(this);
-            let info = $btn.data("info");
-            const idReclamo = info.IdReclamo || info.idReclamo;
-
-            if (intervaloPestaña) {
-                clearInterval(intervaloPestaña);
-                intervaloPestaña = null;
-                document.title = tituloOriginal;
-            }
-
-            const idAsignadoActual = info.IdUsuarioAsignado || info.idUsuarioAsignado;
-
-            /*   if ((!idAsignadoActual || idAsignadoActual === 0) && (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3)) {*/
-            if ((!idAsignadoActual || idAsignadoActual === 0) && rolUsuarioLogueado === 4) {
-                $.post('@Url.Action("TomarReclamo", "ReclamosBodega")', { idReclamo: idReclamo }, function (res) {
-                    if (res.success) {
-                        info.IdEstado = 5;
-                        info.Estado = "En Proceso";
-                        info.IdUsuarioAsignado = idUsuarioLogueado;
-                        $btn.data("info", info);
-                        $btn.closest("tr").find(".badge").first().text("En Proceso").attr("class", "badge bg-info");
-                    }
-                    verDetalle(info);
-                });
-            } else {
-                verDetalle(info);
-            }
-        });*@
+     
         $(document).on("click", ".btn-ver", function () {
             let $btn = $(this);
             let info = $btn.data("info");
@@ -881,28 +935,26 @@
                 $("#listaAdjuntos").html('<div class="p-3 text-center text-danger small">Error al conectar con el servidor.</div>');
             });
         }
-        function abrirModalNuevo() { $("#modalNuevoReclamo").modal("show"); }
+       /* function abrirModalNuevo() { $("#modalNuevoReclamo").modal("show"); }*/
 
-        //function crearReclamo() {
-        //    // Validar que el problema no esté vacío antes de enviar
-        //    if ($("#nuevoProblema").val().trim() === "") {
-        //        Swal.fire('Atención', 'Por favor describe el problema', 'warning');
-        //        return;
-        //    }
+        function abrirModalNuevo() {
+            // 1. Resetear el Select (selecciona la primera opción)
+            // Si tu primera opción no tiene un value="0", usará la primera disponible por defecto
+            $("#cboIncidencia").prop("selectedIndex", 0);
 
-        //    const reclamo = {
-        //        IdReclamo: 0,
-        //        IdTipoIncidencia: parseInt($("#cboIncidencia").val()),
-        //        // Corregidos para que coincidan con los id del HTML:
-        //        Nrequisa: $("#Nrequisa").val(),
-        //        FechaRequisa: $("#FechaRequisa").val(),
-        //        Problema: $("#nuevoProblema").val(),
-        //        IdEstado: 3
-        //    };
+            // 2. Limpiar Inputs de texto (Requisa y Fecha)
+            $("#Nrequisa").val("");
+            $("#FechaRequisa").val("");
 
-        //    console.log("Datos a enviar:", reclamo); // Para que veas en la consola si se armó bien
-        //    enviarDatos(reclamo, "INSERT", "#fArchivos");
-        //}
+            // 3. Limpiar Textarea de descripción
+            $("#nuevoProblema").val("");
+
+            // 4. Limpiar el Input de archivos
+            $("#fArchivos").val("");
+
+            // 5. Mostrar el modal
+            $("#modalNuevoReclamo").modal("show");
+        }
         function crearReclamo() {
             // 1. Obtener referencia al botón de guardar del modal
             const $btnGuardar = $("#modalNuevoReclamo").find("button[onclick='crearReclamo()']");
@@ -1150,29 +1202,34 @@
                 }
             });
         }
+     
         function actualizarContadoresCards() {
-            // Si el contenedor de las cards no existe en el HTML, salimos de la función
-            if ($('#card-total-abiertos').length === 0) return;
+            // 1. Validar que la tabla y el contador existan
+            if (!tablaReclamos || $('#card-total-abiertos').length === 0) return;
+
+            // 2. Obtener todos los datos cargados en la tabla (no solo los visibles)
+            let todosLosDatos = tablaReclamos.data();
 
             let abiertos = 0;
             let proceso = 0;
             let cerrados = 0;
 
-            // Recorremos la tabla para contar los estados actuales
-            $("#tblReclamos tbody tr").each(function () {
-                // Buscamos el texto dentro del badge de estado en cada fila
-                let estado = $(this).find(".badge").text().trim().toLowerCase();
+            // 3. Recorrer el array de objetos JSON directamente
+            todosLosDatos.each(function (row) {
+                // Usamos el nombre de la propiedad tal cual viene del servidor (minúscula o mayúscula según tu C#)
+                let estado = (row.estado || row.Estado || "").toString().trim().toLowerCase();
 
                 if (estado === "pendiente") abiertos++;
                 else if (estado === "en proceso") proceso++;
                 else if (estado === "cerrado") cerrados++;
             });
 
-            // Asignamos los valores a las cards
+            // 4. Actualizar las Cards con animación (opcional pero elegante)
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
-            // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados);
+
+            // Log para depuración en consola
+            console.log(`Contadores actualizados: Pendientes: ${abiertos}, Proceso: ${proceso}`);
         }
     </script>
 }

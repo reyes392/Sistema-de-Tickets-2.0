@@ -58,7 +58,9 @@ namespace Capa_Datos.Anulaciones
                                     UsuarioAsignado = dr["USUARIO_ASIGNADO"].ToString(),
                                     Registro = dr["REGISTRO"] == DBNull.Value ? null : Convert.ToDateTime(dr["REGISTRO"]),
                                     Modificacion = dr["MODIFICACION"] == DBNull.Value ? null : Convert.ToDateTime(dr["MODIFICACION"]),
-                                  
+                                    Monto = dr["MONTO"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["MONTO"]),
+                                    NumeroFactura = dr["NUMERO_FACTURA"]?.ToString(),
+                                    FechaFactura = dr["FECHA_FACTURA"] == DBNull.Value ? null : Convert.ToDateTime(dr["FECHA_FACTURA"]),
                                 });
                             }
                         }
@@ -102,6 +104,10 @@ namespace Capa_Datos.Anulaciones
                     cmd.Parameters.AddWithValue("@RESOLUCION_PROBLEMA", (object)obj.Resolucion ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ID_ESTADO", obj.IdEstado);
                     cmd.Parameters.AddWithValue("@ID_USUARIO_ASIGNADO", obj.IdUsuarioAsignado == 0 ? DBNull.Value : obj.IdUsuarioAsignado);
+                    // Agregar los parámetros al objeto SqlCommand
+                    cmd.Parameters.AddWithValue("@MONTO", obj.Monto);
+                    cmd.Parameters.AddWithValue("@NUMERO_FACTURA", (object)obj.NumeroFactura ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@FECHA_FACTURA", (object)obj.FechaFactura ?? DBNull.Value);
 
                     // Parámetros de salida
                     cmd.Parameters.Add("@RESULTADO", SqlDbType.Bit).Direction = ParameterDirection.Output;

@@ -70,7 +70,12 @@ namespace Capa_Datos.Canjes
 
                                 // Nuevos campos de nombres (Autorizador/Anulador)
                                 NombreAutorizador = dr["NombreAutorizador"]?.ToString(),
-                                NombreAnulador = dr["NombreAnulador"]?.ToString()
+                                NombreAnulador = dr["NombreAnulador"]?.ToString(),
+                                Monto = dr["MONTO"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["MONTO"]),
+                                NumeroFactura = dr["NUMERO_FACTURA"]?.ToString(),
+                                FechaFactura = dr["FECHA_FACTURA"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(dr["FECHA_FACTURA"]),
+                                IdCaja = dr["ID_CAJA"] == DBNull.Value ? 0 : Convert.ToInt32(dr["ID_CAJA"]),
+                                NombreCaja = dr["NombreCaja"]?.ToString() ?? string.Empty,
                             });
                         }
                     }
@@ -110,7 +115,10 @@ namespace Capa_Datos.Canjes
                     cmd.Parameters.AddWithValue("ID_USUARIO_ASIGNADO", obj.IdUsuarioAsignado == 0 ? DBNull.Value : (object)obj.IdUsuarioAsignado);
                     cmd.Parameters.AddWithValue("ID_USUARIO_AUTORIZADOR", obj.IdUsuarioAutorizador == 0 ? DBNull.Value : (object)obj.IdUsuarioAutorizador);
                     cmd.Parameters.AddWithValue("ID_USUARIO_ANULADOR", obj.IdUsuarioAnulador == 0 ? DBNull.Value : (object)obj.IdUsuarioAnulador);
-
+                    cmd.Parameters.AddWithValue("MONTO", obj.Monto ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("NUMERO_FACTURA", obj.NumeroFactura ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("FECHA_FACTURA", obj.FechaFactura ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("ID_CAJA", obj.IdCaja == 0 ? DBNull.Value : (object)obj.IdCaja);
                     // Parámetros de salida
                     cmd.Parameters.Add("RESULTADO", SqlDbType.Bit).Direction = ParameterDirection.Output;
                     cmd.Parameters.Add("MENSAJE", SqlDbType.VarChar, 200).Direction = ParameterDirection.Output;

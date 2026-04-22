@@ -147,6 +147,56 @@
             opacity: 1;
         }
     }
+
+
+
+    /* ===== TEXTO GENERAL ===== */
+    body {
+        color: #212529;
+    }
+
+    /* Labels y títulos */
+    label, .form-label, strong {
+        color: #1a1a1a;
+    }
+
+    /* Texto secundario */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== TABLAS (SOLO TEXTO) ===== */
+    .table td {
+        color: #2c2c2c;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #ffffff; /* asegura buen contraste en header oscuro */
+    }
+
+    /* ===== DETALLE DERECHO ===== */
+    #seccionDetalle {
+        background-color: #f4f6f9;
+    }
+
+    /* Inputs */
+    .form-control {
+        color: #000;
+    }
+
+    /* Textarea readonly */
+    textarea[readonly] {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    /* ===== BOTONES ===== */
+    .btn {
+        font-weight: 500;
+    }
+
+
 </style>
 @if (ViewBag.RolUsuario == 8) // Cambia el 1 por el ID que corresponda a "Administrador"
 {
@@ -272,12 +322,12 @@
                     </div>
 
                     <div class="row g-2 mb-4 border-bottom pb-3">
-                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Modificador:</strong> <span id="txtModificador" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Registro:</strong> <span id="lblRegistro" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Modificacion:</strong> <span id="lblModificacion" class="d-block text-muted"></span></div>
+                        <div class="col-6 small text-primary"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Modificador:</strong> <span id="txtModificador" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Registro:</strong> <span id="lblRegistro" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Modificacion:</strong> <span id="lblModificacion" class="d-block fw-bold"></span></div>
 
                     </div>
 
@@ -288,7 +338,7 @@
 
                     @* Campo para que el Auditor Z ponga su resolución *@
                     <div class="mb-3">
-                        <label class="fw-bold small text-success">Resolución de Auditoría:</label>
+                        <label class="fw-bold small ">Resolución de Auditoría:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
                     </div>
 
@@ -442,11 +492,21 @@
 
         // --- 3. INICIALIZACIÓN ---
         $(document).ready(function () {
-            //$('#tblAuditorias').DataTable({
-            //    pageLength: 10,
-            //    order: [],
-            //    language: { url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
-            //});
+            // Clonar header para filtros
+            $('#tblAuditorias thead tr').clone(true).appendTo('#tblAuditorias thead');
+
+            $('#tblAuditorias thead tr:eq(1) th').each(function (i) {
+
+                // Evitar columna de botón (Acción)
+                if (i === 5) {
+                    $(this).html('');
+                    return;
+                }
+
+                var title = $(this).text().trim();
+
+                $(this).html(`<input type="text" class="form-control form-control-sm" placeholder="${title}" />`);
+            });
             // 1. Inicializar DataTable con carga AJAX
             tablaAuditorias = $('#tblAuditorias').DataTable({
                 destroy: true,
@@ -461,21 +521,29 @@
                     {
                         data: 'idAuditoriaZ',
                         render: function(data) {
-                            return `<span class="fw-bold">#${data}</span>
-                                    <span id="notif-${data}" class="badge rounded-pill bg-danger d-none animate__animated animate__pulse animate__infinite">
-                                        <i class="fas fa-comment"></i>
-                                    </span>`;
+                            return `
+                                <div class="d-flex align-items-center">
+                                  <span id="notif-${data}" class="badge badge-danger rounded-circle d-none mr-2 shadow-sm" style="padding: 5px 7px;">
+                                      <i class="fas fa-envelope" style="font-size: 0.7rem;"></i>
+                                  </span>
+                                  <span class="fw-bold text-primary">${data}</span>
+                             </div>`;
                         }
+                        
                     },
                     { data: 'nombreSolicitador' },
                     { data: 'tipoIncidenciaAuditoria' },
                     {
-                        data: 'fechaRegistro',
-                        render: function(data) {
-                            if(!data) return '---';
-                            // Formato rápido DD/MM/YYYY HH:mm
-                            let d = new Date(data);
-                            return d.toLocaleString('es-NI', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                        //data: 'fechaRegistro',
+                        //render: function(data) {
+                        //    if(!data) return '---';
+                        //    // Formato rápido DD/MM/YYYY HH:mm
+                        //    let d = new Date(data);
+                        //    return d.toLocaleString('es-NI', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                        //}
+
+                        render: function (data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
                         }
                     },
                     {
@@ -499,14 +567,35 @@
                         }
                     }
                 ],
-                drawCallback: function() {
-                    // Sincronizar notificaciones de chat cada vez que la tabla se dibuje
-                    if (typeof monitorearMensajesNuevos === "function") monitorearMensajesNuevos();
+                drawCallback: function () {
+                    // 1. Solo pintamos/sincronizamos lo que ya está en memoria
+                    if (typeof sincronizarEstadosChatMasivo === "function") {
+                        sincronizarEstadosChatMasivo();
+                    }
+
+                    // 2. Actualizamos los contadores de las tarjetas
+                    actualizarContadoresCards();
                 },
                 language: {
                     url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json",
                     processing: '<div class="spinner-border text-primary" role="status"></div>'
                 }
+            });
+
+            // Activar filtros por columna
+            $('#tblAuditorias thead tr:eq(1) th').each(function (i) {
+
+                $('input', this).on('keyup change', function () {
+
+                    if (tablaAuditorias.column(i).search() !== this.value) {
+                        tablaAuditorias
+                            .column(i)
+                            .search(this.value)
+                            .draw();
+                    }
+
+                });
+
             });
 
             // 2. Delegación de evento para el botón "Ver"
@@ -858,7 +947,20 @@
             });
         }
         // --- 7. ACCIONES ---
-        function abrirModalNuevo() { $("#modalNuevo").modal("show"); }
+        /* function abrirModalNuevo() { $("#modalNuevo").modal("show"); }*/
+        function abrirModalNuevo() {
+            // 1. Resetear el Select de Incidencias (vuelve a la primera opción)
+            $("#cboIncidencia").prop("selectedIndex", 0);
+
+            // 2. Limpiar el área de Observaciones
+            $("#txtNuevoProblema").val("");
+
+            // 3. Limpiar el input de Archivos (Evidencia)
+            $("#fArchivos").val("");
+
+            // 4. Mostrar el modal
+            $("#modalNuevo").modal("show");
+        }
 
         function crearAuditoria() {
             const descripcion = $("#txtNuevoProblema").val().trim();
@@ -962,29 +1064,34 @@
             // Opcional: Ocultar el botón de guardar si ya está cerrado
             $("#btnGuardarAuditoria").hide();
         }
+  
         function actualizarContadoresCards() {
-            // Si el contenedor de las cards no existe en el HTML, salimos de la función
-            if ($('#card-total-abiertos').length === 0) return;
+            // 1. Validar que la tabla y el contador existan
+            if (!tablaAuditorias || $('#card-total-abiertos').length === 0) return;
+
+            // 2. Obtener todos los datos cargados en la tabla (no solo los visibles)
+            let todosLosDatos = tablaAuditorias.data();
 
             let abiertos = 0;
             let proceso = 0;
             let cerrados = 0;
 
-            // Recorremos la tabla para contar los estados actuales
-            $("#tblAuditorias tbody tr").each(function () {
-                // Buscamos el texto dentro del badge de estado en cada fila
-                let estado = $(this).find(".badge").text().trim().toLowerCase();
+            // 3. Recorrer el array de objetos JSON directamente
+            todosLosDatos.each(function (row) {
+                // Usamos el nombre de la propiedad tal cual viene del servidor (minúscula o mayúscula según tu C#)
+                let estado = (row.estado || row.Estado || "").toString().trim().toLowerCase();
 
                 if (estado === "pendiente") abiertos++;
                 else if (estado === "en proceso") proceso++;
                 else if (estado === "cerrado") cerrados++;
             });
 
-            // Asignamos los valores a las cards
+            // 4. Actualizar las Cards con animación (opcional pero elegante)
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
-            // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados);
+
+            // Log para depuración en consola
+            console.log(`Contadores actualizados: Pendientes: ${abiertos}, Proceso: ${proceso}`);
         }
     </script>
 }

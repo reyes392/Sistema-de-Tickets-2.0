@@ -22,7 +22,7 @@ namespace Capa_Datos.Canjes
             bool respuesta = false;
             using (var cn = new SqlConnection(_connectionString))
             {
-                string query = @"INSERT INTO ARCHIVOS_ADJUNTOS_CANJES (ID_CANJES, NOMBRE_ARCHIVO, NOMBRE_SISTEMA, EXTENSION, RUTA_SERVIDOR) 
+                string query = @"INSERT INTO ARCHIVOS_ADJUNTOS_CANJES (ID_CANJE, NOMBRE_ARCHIVO, NOMBRE_SISTEMA, EXTENSION, RUTA_SERVIDOR) 
                                 VALUES (@id, @nom, @sys, @ext, @ruta)";
                 SqlCommand cmd = new SqlCommand(query, cn);
                 cmd.Parameters.AddWithValue("@id", obj.IdReferencia);

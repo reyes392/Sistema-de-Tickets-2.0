@@ -80,6 +80,54 @@
             opacity: 1;
         }
     }
+
+
+    /* ===== TEXTO GENERAL ===== */
+    body {
+        color: #212529;
+    }
+
+    /* Labels y títulos */
+    label, .form-label, strong {
+        color: #1a1a1a;
+    }
+
+    /* Texto secundario */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== TABLAS (SOLO TEXTO) ===== */
+    .table td {
+        color: #2c2c2c;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #ffffff; /* asegura buen contraste en header oscuro */
+    }
+
+    /* ===== DETALLE DERECHO ===== */
+    #seccionDetalle {
+        background-color: #f4f6f9;
+    }
+
+    /* Inputs */
+    .form-control {
+        color: #000;
+    }
+
+    /* Textarea readonly */
+    textarea[readonly] {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    /* ===== BOTONES ===== */
+    .btn {
+        font-weight: 500;
+    }
+
 </style>
 
 @if (ViewBag.RolUsuario == 7) // Cambia el 1 por el ID que corresponda a "Administrador"
@@ -169,6 +217,11 @@
                         <i class="fas fa-comments"></i> Chat / Notas
                     </button>
                 </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#adjuntosTab" type="button" onclick="recarcarAdjuntosActuales()">
+                        <i class="fas fa-paperclip"></i> Adjuntos
+                    </button>
+                </li>
             </ul>
 
             <div class="tab-content border border-top-0 p-4 bg-white shadow-sm">
@@ -180,22 +233,25 @@
                     </div>
 
                     <div class="row g-2 mb-4 border-bottom pb-3">
-                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Fecha Registro:</strong> <span id="txtFechaRegistro" class="d-block text-muted"></span></div>
-
+                        <div class="col-6 small text-primary"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Asignado a:</strong> <span id="txtAsignado" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Fecha Registro:</strong> <span id="txtFechaRegistro" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small border-top mt-2 pt-2 text-primary"><strong>Caja:</strong> <span id="txtCaja" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small border-top mt-2 pt-2 text-primary"><strong>Monto:</strong> <span id="txtMonto" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong># Factura:</strong> <span id="txtFactura" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Fecha Factura:</strong> <span id="txtFechaFactura" class="d-block fw-bold"></span></div>
                         <div class="col-6 small border-top mt-2 pt-2"><strong>Autorizado por:</strong> <span id="txtAutorizador" class="d-block text-success"></span></div>
-                        <div class="col-6 small border-top mt-2 pt-2"><strong>Fecha Autorizado:</strong> <span id="txtFechaAutorizado" class="d-block text-muted"></span></div>
+                        <div class="col-6 small text-primary border-top mt-2 pt-2"><strong>Fecha Autorizado:</strong> <span id="txtFechaAutorizado" class="d-block text-muted"></span></div>
                         <div class="col-6 small"><strong>Anulado por:</strong> <span id="txtAnulador" class="d-block text-danger"></span></div>
-                        <div class="col-6 small"><strong>Fecha Anulado:</strong> <span id="txtFechaAnulado" class="d-block text-muted"></span></div>
+                        <div class="col-6 small text-primary"><strong>Fecha Anulado:</strong> <span id="txtFechaAnulado" class="d-block fw-bold"></span></div>
                     </div>
                     <div class="mb-3">
-                        <label class="fw-bold small text-primary">Descripción del Problema:</label>
+                        <label class="fw-bold small ">Descripción del Problema:</label>
                         <div id="divDescripcionDetalle" class="p-2 border rounded bg-light" style="min-height: 60px; white-space: pre-wrap;"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="fw-bold small text-success">Resolución:</label>
+                        <label class="fw-bold small">Resolución:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
                     </div>
                     @if (ViewBag.RolUsuario == 1 || ViewBag.RolUsuario == 7 || ViewBag.RolUsuario == 6)
@@ -239,6 +295,18 @@
                         </button>
                     </div>
                 </div>
+
+                <div class="tab-pane fade" id="adjuntosTab">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold"><i class="fas fa-file-alt"></i> Archivos del Canje</h6>
+                    </div>
+
+                    <div id="listaAdjuntos" class="list-group shadow-sm">
+                        <div class="p-3 text-center text-muted small">Cargando archivos...</div>
+                    </div>
+                </div>
+
+
             </div>
         </div>
 
@@ -259,20 +327,69 @@
                 <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle"></i> Nuevo</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+            @*<div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-uppercase">Tipo de Incidencia</label>
+                <select id="cboIncidencia" class="form-select border-primary">
+                    <option value="">Seleccione...</option>
+                    @foreach (var item in ViewBag.Incidencias)
+                    {
+                        <option value="@item.IdTiposIncidenciasCanjes">@item.Descripcion</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
+                <textarea id="txtDescripcionNueva" class="form-control border-danger" rows="4" placeholder="Explique detalladamente la situación..."></textarea>
+            </div>
+        </div>*@
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold small text-uppercase">Tipo de Incidencia</label>
-                    <select id="cboIncidencia" class="form-select border-primary">
-                        <option value="">Seleccione...</option>
-                        @foreach (var item in ViewBag.Incidencias)
-                        {
-                            <option value="@item.IdTiposIncidenciasCanjes">@item.Descripcion</option>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Tipo de Incidencia</label>
+                        <select id="cboIncidencia" class="form-select border-primary">
+                            <option value="">Seleccione...</option>
+                            @foreach (var item in ViewBag.Incidencias)
+                            {
+                                <option value="@item.IdTiposIncidenciasCanjes">@item.Descripcion</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-6 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Caja</label>
+                        <select id="cboCajaNueva" class="form-select border-primary">
+                            <option value="">Seleccione...</option>
+                            @foreach (var caja in ViewBag.Cajas)
+                            {@* Asumiendo que pasas las cajas por ViewBag *@
+                            <option value="@caja.IdCaja">@caja.Descripcion</option>
                         }
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
-                    <textarea id="txtDescripcionNueva" class="form-control border-danger" rows="4" placeholder="Explique detalladamente la situación..."></textarea>
+                        </select>
+                    </div>
+
+                    <div class="col-6 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Monto (C$)</label>
+                        <input type="number" id="txtMontoNueva" class="form-control border-primary" step="0.01" placeholder="0.00">
+                    </div>
+
+                    <div class="col-6 mb-3">
+                        <label class="form-label fw-bold small text-uppercase"># Factura</label>
+                        <input type="text" id="txtFacturaNueva" class="form-control border-primary" placeholder="Ej: 001-002">
+                    </div>
+
+                    <div class="col-6 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Fecha Factura</label>
+                        <input type="date" id="txtFechaFacturaNueva" class="form-control border-primary" autocomplete="off">
+                    </div>
+
+                    <div class="col-12 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
+                        <textarea id="txtDescripcionNueva" class="form-control border-danger" rows="3" placeholder="Explique detalladamente..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-success"><i class="fas fa-paperclip"></i> ADJUNTAR EVIDENCIA</label>
+                        <input type="file" id="fArchivos" class="form-control" multiple />
+                    </div>
                 </div>
             </div>
             <div class="modal-footer bg-light">
@@ -344,7 +461,7 @@
             rol: parseInt('@ViewBag.RolUsuario') || 0,
 
             isStaff: function() {
-                return [ 6, 7].includes(this.rol);
+                return [1, 6, 7].includes(this.rol);
             },
 
             canAnular: function() {
@@ -366,29 +483,22 @@
         // --- 2. INICIALIZACIÓN ---
         $(document).ready(function () {
 
+            // Clonar header para filtros
+            $('#tblCanjes thead tr').clone(true).appendTo('#tblCanjes thead');
 
-            //$('#tblCanjes').DataTable({
+            $('#tblCanjes thead tr:eq(1) th').each(function (i) {
 
-            //    pageLength: 10,
-            //    lengthMenu: [5, 10, 25, 50],
-            //    order: [],
-            //    language: {
-            //        lengthMenu: "Mostrar _MENU_ registros",
+                // Evitar columna de botón (Acción)
+                if (i === 5) {
+                    $(this).html('');
+                    return;
+                }
 
-            //        zeroRecords: "No se encontraron datos",
-            //        info: "Página _PAGE_ de _PAGES_",
-            //        infoEmpty: "No hay registros",
-            //        infoFiltered: "(filtrado de _MAX_ registros)",
-            //        search: "Buscar:",
-            //        paginate: {
-            //            first: "Primero",
-            //            last: "Último",
-            //            next: "Siguiente",
-            //            previous: "Anterior"
-            //        }
-            //    }
+                var title = $(this).text().trim();
 
-            //});
+                $(this).html(`<input type="text" class="form-control form-control-sm" placeholder="${title}" />`);
+            });
+
             // 1. Inicializar DataTable
             tablaCanjes = $('#tblCanjes').DataTable({
                 destroy: true,
@@ -403,18 +513,24 @@
                     {
                         data: 'idCanje',
                         render: function(data) {
-                            return `<span class="fw-bold">#${data}</span>
-                                    <span id="notif-${data}" class="badge rounded-pill bg-danger d-none animate__animated animate__pulse animate__infinite">
-                                        <i class="fas fa-comment"></i>
-                                    </span>`;
+                            return `
+                                <div class="d-flex align-items-center">
+                                    <span id="notif-${data}" class="badge badge-danger rounded-circle d-none mr-2 shadow-sm" style="padding: 5px 7px;">
+                                        <i class="fas fa-envelope" style="font-size: 0.7rem;"></i>
+                                    </span>
+                                    <span class="fw-bold text-primary">${data}</span>
+                             </div>`;
                         }
                     },
                     { data: 'nombreSolicitador' },
                     { data: 'tipoIncidencia' },
                     {
                         data: 'fechaRegistro',
-                        render: function(data) {
-                            return data ? data : '---'; // O formatear si recibes objeto Date
+                        //render: function(data) {
+                        //    return data ? data : '---'; // O formatear si recibes objeto Date
+                        //}
+                        render: function (data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
                         }
                     },
                     {
@@ -438,9 +554,18 @@
                     }
                 ],
                 language: { url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json" },
-                drawCallback: function() {
-                    if (typeof monitorearMensajesNuevos === "function") monitorearMensajesNuevos();
-                }
+                drawCallback: function () {
+                    // 1. Sincronizar visualmente los badges de mensajes (sin hacer nueva petición AJAX)
+                    if (typeof sincronizarEstadosChatMasivo === "function") {
+                        sincronizarEstadosChatMasivo();
+                    }
+
+                    // 2. Ejecutar el conteo de Canjes para actualizar las cards
+                    actualizarContadoresCards();
+
+                    // 3. Opcional: Si necesitas monitorear mensajes, usa el que ya está en el setInterval
+                    // para no saturar cada vez que se pagina la tabla.
+                },
             });
             // Carga inicial de versión
             $.get('@Url.Action("ObtenerVersionCanjes", "Canjes")', v => state.versionCanjeActual = v);
@@ -450,7 +575,21 @@
             setInterval(monitorearMensajesNuevos, 7000); // Badges cada 7 seg
             setInterval(refrescarTablaCanjes, 15000); // Badges cada 15 seg
         });
+        // Activar filtros por columna
+        $('#tblCanjes thead tr:eq(1) th').each(function (i) {
 
+            $('input', this).on('keyup change', function () {
+
+                if (tablaCanjes.column(i).search() !== this.value) {
+                    tablaCanjes
+                        .column(i)
+                        .search(this.value)
+                        .draw();
+                }
+
+            });
+
+        });
         // --- 3. ACTUALIZACIÓN AUTOMÁTICA DE TABLA ---
         function verificarCambiosCanje() {
             $.get('@Url.Action("ObtenerVersionCanjes", "Canjes")', function (nuevaVersion) {
@@ -461,23 +600,7 @@
             });
         }
         function refrescarTablaCanjes() {
-            //$.get(window.location.href, function (data) {
-            //    const nuevoContenido = $(data).find("#tblCanjes tbody").html();
-            //    $("#tblCanjes tbody").html(nuevoContenido);
-            //    actualizarContadoresCards();
-            //    // RE-VINCULAR DATOS: Si hay un canje abierto, buscamos su nueva info en la tabla
-            //    if (state.canjeSeleccionado) {
-            //        const idActual = getId(state.canjeSeleccionado);
-            //        // Buscamos el botón "Ver" de la fila que acabamos de renderizar
-            //        const botonNuevo = $(`#row-${idActual} .btn-ver`);
 
-            //        if (botonNuevo.length > 0) {
-            //            const infoActualizada = botonNuevo.data("info");
-            //            state.canjeSeleccionado = infoActualizada;
-            //            verDetalle(infoActualizada); // Esto repinta los textos de auditoría
-            //        }
-            //    }
-            //});
             if (tablaCanjes) {
                 tablaCanjes.ajax.reload(function () {
                     // Si el usuario tenía algo seleccionado, actualizar su info en 'state'
@@ -495,53 +618,56 @@
         }
 
        // --- 4. GESTIÓN DE DETALLE Y ESTADOS ---
-             $(document).on("click", ".btn-ver", function () {
-                let info = $(this).data("info");
-                const id = getId(info);
-                const idEstado = parseInt(info.IdEstado || info.idEstado || 0);
-                const idAsignado = parseInt(info.IdUsuarioAsignado || info.idUsuarioAsignado || 0);
+          $(document).on("click", ".btn-ver", function () {
+            let info = $(this).data("info");
+            const id = getId(info);
+            const idEstado = parseInt(info.IdEstado || info.idEstado || 0);
+            const idAsignado = parseInt(info.IdUsuarioAsignado || info.idUsuarioAsignado || 0);
+            const idIncidencia = info.IdTipoIncidenciaCanjes || info.idTipoIncidenciaCanjes || 0;
 
-                // Capturamos el ID de incidencia (importante para tu SP)
-                const idIncidencia = info.IdTipoIncidenciaCanjes || info.idTipoIncidenciaCanjes || 0;
+            if (idEstado === 3 && idAsignado === 0 && user.isStaff()) {
+                let formData = new FormData();
+                formData.append("canjes.IdCanje", id);
+                formData.append("canjes.IdTipoIncidencia", idIncidencia);
+                formData.append("canjes.IdEstado", 5);
+                formData.append("canjes.Resolucion", "");
+                formData.append("Accion", "UPDATE");
 
-                // Si es Pendiente (3), no tiene asignado y soy Staff (1, 3, 7)
-                if (idEstado === 3 && idAsignado === 0 && user.isStaff()) {
+                // --- CORRECCIÓN: Agregar campos financieros para no perderlos ---
+                formData.append("canjes.Monto", info.monto || info.Monto || 0);
+                formData.append("canjes.NumeroFactura", info.numeroFactura || info.NumeroFactura || "");
+                formData.append("canjes.IdCaja", info.idCaja || info.IdCaja || 0);
+                formData.append("canjes.DescripcionProblema", info.descripcionProblema || info.DescripcionProblema || "");
+                // ----------------------------------------------------------------
 
-                    // Creamos el objeto exactamente como lo espera tu Action "GuardarCanje"
-                    let formData = new FormData();
-                    formData.append("canjes.IdCanje", id);
-                    formData.append("canjes.IdTipoIncidencia", idIncidencia); // Enviamos la incidencia actual
-                    formData.append("canjes.IdEstado", 5); // Cambiamos a 'En Proceso'
-                    formData.append("canjes.Resolucion", "");
-                    formData.append("Accion", "UPDATE");
-
-                    $.ajax({
-                        url: '@Url.Action("GuardarCanje", "Canjes")',
-                        type: "POST",
-                        data: formData,
-                        contentType: false,
-                        processData: false,
-                        success: function (res) {
-                            if (res.success) {
-                                refrescarTablaCanjes();
-                                actualizarContadoresCards();
-                                // Actualizamos el objeto info localmente para la UI
-                                info.IdEstado = 5;
-                                info.Estado = "EN PROCESO";
-                                info.NombreAsignado = user.nombre;
-                            }
-                            verDetalle(info);
-                        },
-                        error: function() {
-                            verDetalle(info);
+                $.ajax({
+                    url: '@Url.Action("GuardarCanje", "Canjes")',
+                    type: "POST",
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function (res) {
+                        if (res.success) {
+                            refrescarTablaCanjes();
+                            actualizarContadoresCards();
+                            info.IdEstado = 5;
+                            info.Estado = "EN PROCESO";
+                            info.NombreAsignado = user.nombre;
                         }
-                    });
-                } else {
-                    // Si ya está en proceso o no tengo permiso de staff, solo ver detalle
-                    verDetalle(info);
-                }
-            });
-                function verDetalle(canje) {
+                        verDetalle(info);
+                    },
+                    error: function() {
+                        verDetalle(info);
+                    }
+                });
+            } else {
+                verDetalle(info);
+            }
+        });
+
+
+
+            function verDetalle(canje) {
             state.canjeSeleccionado = canje;
             $("#seccionDetalle").show();
             $("#detalleVacio").hide();
@@ -565,8 +691,15 @@
 
             $("#txtAnulador").text(canje.nombreAnulador || canje.NombreAnulador || "---");
             $("#txtFechaAnulado").text(formatearFecha(canje.fechaAnulado || canje.FechaAnulado)); // Corregido 'canal' por 'canje'
-
-            actualizarUIEstado(canje);
+                    // --- NUEVOS CAMPOS FINANCIEROS (Basados en el SP) ---
+            $("#txtMonto").text(canje.monto ? `C$ ${parseFloat(canje.monto).toFixed(2)}` : "---");
+            $("#txtFactura").text(canje.numeroFactura || "---");
+            const fFactura = canje.fechaFactura || canje.FechaFactura;
+            // Si formatearFecha devuelve "dd/mm/yyyy hh:mm", cortamos para dejar solo los primeros 10 caracteres
+             $("#txtFechaFactura").text(fFactura ? formatearFecha(fFactura).split(' ')[0] : "---");
+             $("#txtCaja").text(canje.nombreCaja || "---"); // Proviene del nuevo JOIN en el SP
+                    actualizarUIEstado(canje);
+                    cargarAdjuntos(canje);
         }
 
         function actualizarUIEstado(canje) {
@@ -836,14 +969,22 @@
 
         function guardarCambiosCanje() {
             if (!state.canjeSeleccionado) return;
-            const res = $("#txtResolucion").val().trim();
 
+            const res = $("#txtResolucion").val().trim();
+            const canje = state.canjeSeleccionado;
+
+            // Paquete completo de datos
             const canjeData = {
-                IdCanje: getId(state.canjeSeleccionado),
+                IdCanje: getId(canje), // Ahora sí viajará el ID (ej: 9)
+                IdTipoIncidencia: canje.idTipoIncidenciaCanjes || canje.IdTipoIncidenciaCanjes || canje.idTipoIncidencia,
+                DescripcionProblema: canje.descripcionProblema || canje.DescripcionProblema,
                 Resolucion: res,
-                IdEstado: (res !== "") ? 6 : 5, // 6 = Autorizado/Cerrado
-                IdTipoIncidencia: state.canjeSeleccionado.IdTipoIncidenciaCanjes || state.canjeSeleccionado.idTipoIncidenciaCanjes || state.canjeSeleccionado.idTipoIncidencia,
-                // ENVIAMOS EL USUARIO LOGUEADO COMO EL QUE GESTIONA
+                IdEstado: (res !== "") ? 6 : 5,
+                // Importante: Re-enviamos los datos financieros para que el SP los mantenga
+                Monto: canje.monto || canje.Monto,
+                NumeroFactura: canje.numeroFactura || canje.NumeroFactura,
+                FechaFactura: canje.fechaFactura || canje.FechaFactura,
+                IdCaja: canje.idCaja || canje.IdCaja,
                 IdUsuarioAsignado: user.id
             };
 
@@ -853,38 +994,78 @@
                 icon: 'question',
                 showCancelButton: true
             }).then((result) => {
-                if (result.isConfirmed) enviarDatos(canjeData, "UPDATE");
+                if (result.isConfirmed) {
+                    enviarDatos(canjeData, "UPDATE");
+                }
             });
         }
+
+
         function crearCanje() {
             const idIncidencia = $("#cboIncidencia").val();
-            const descripcion = $("#txtDescripcionNueva").val().trim(); // --- NUEVO ---
+            const descripcion = $("#txtDescripcionNueva").val().trim();
+            const monto = $("#txtMontoNueva").val();
+            const factura = $("#txtFacturaNueva").val().trim();
+            const fechaFactura = $("#txtFechaFacturaNueva").val();
+            const idCaja = $("#cboCajaNueva").val();
+
+            // Validaciones
             if (!idIncidencia) {
                 Swal.fire('Atención', 'Por favor, seleccione un tipo de incidencia', 'warning');
                 return;
             }
-            if (descripcion === "") { // --- NUEVO: Validación opcional ---
-                Swal.fire('Atención', 'Por favor, describa el problema para ayudar al soporte', 'warning');
+            if (descripcion === "") {
+                Swal.fire('Atención', 'Por favor, describa el problema', 'warning');
                 return;
             }
-            // Objeto para INSERT
-            const nuevoCanje = {
-                IdCanje: 0,
-                IdTipoIncidencia: parseInt(idIncidencia),
-                DescripcionProblema: descripcion, // --- NUEVO ---
-                IdEstado: 3 // Pendiente
-            };
 
-            enviarDatos(nuevoCanje, "INSERT");
-        }
-        function enviarDatos(obj, accion) {
+            // 1. CREAR EL FORMDATA (En lugar de un objeto simple)
             let formData = new FormData();
-            formData.append("Accion", accion);
-            // Si es UPDATE y tenemos descripción en el estado actual, la mantenemos
-            if (accion === "UPDATE" && state.canjeSeleccionado) {
-                formData.append("canjes.DescripcionProblema", state.canjeSeleccionado.DescripcionProblema || state.canjeSeleccionado.descripcionProblema || "");
+
+            // 2. AGREGAR LOS CAMPOS (Usando el prefijo "canjes." para que el Controlador lo mapee)
+          /*  formData.append("canjes.IdCanje", 0);*/
+            formData.append("canjes.IdTipoIncidencia", parseInt(idIncidencia));
+            formData.append("canjes.DescripcionProblema", descripcion);
+            formData.append("canjes.IdEstado", 3);
+            formData.append("canjes.Monto", monto);
+            formData.append("canjes.NumeroFactura", factura);
+            formData.append("canjes.FechaFactura", fechaFactura);
+            formData.append("canjes.IdCaja", idCaja);
+
+            // 3. AGREGAR ARCHIVOS DEL INPUT
+            const inputArchivos = document.getElementById('fArchivos');
+            if (inputArchivos.files.length > 0) {
+                for (let i = 0; i < inputArchivos.files.length; i++) {
+                    formData.append("archivos", inputArchivos.files[i]);
+                }
             }
-            for (let key in obj) { formData.append("canjes." + key, obj[key]); }
+
+            // 4. ENVIAR (Pasamos el formData directamente)
+            enviarDatos(formData, "INSERT");
+        }
+
+        function enviarDatos(datosEntrada, accion) {
+            let formData;
+
+            // Si ya viene como FormData (desde crearCanje)
+            if (datosEntrada instanceof FormData) {
+                formData = datosEntrada;
+                // Nos aseguramos de que lleve la Acción
+                if (!formData.has("Accion")) formData.append("Accion", accion);
+            }
+            // Si viene como objeto (desde otras funciones)
+            else {
+                formData = new FormData();
+                formData.append("Accion", accion);
+
+                if (accion === "UPDATE" && state.canjeSeleccionado) {
+                    formData.append("canjes.DescripcionProblema", state.canjeSeleccionado.DescripcionProblema || "");
+                }
+
+                for (let key in datosEntrada) {
+                    formData.append("canjes." + key, datosEntrada[key]);
+                }
+            }
 
             $.ajax({
                 url: '@Url.Action("GuardarCanje", "Canjes")',
@@ -896,17 +1077,14 @@
                     if (res.success) {
                         Swal.fire('Éxito', res.mensaje, 'success');
                         $("#modalNuevoCanje").modal("hide");
-
+                        refrescarTablaCanjes();
                         if (accion === "INSERT") {
                             $("#seccionDetalle").hide();
                             $("#detalleVacio").show();
                             state.canjeSeleccionado = null;
-                            refrescarTablaCanjes();
                             actualizarContadoresCards();
-                        } else {
-                            // Si es UPDATE, recargamos la tabla y
-                            // buscamos la nueva info para repintar el detalle
-                            refrescarTablaCanjes();
+                            // Limpiar input de archivos después de insertar
+                            $("#fArchivos").val("");
                         }
                     } else {
                         Swal.fire('Error', res.mensaje || 'Error al procesar', 'error');
@@ -914,7 +1092,6 @@
                 }
             });
         }
-
         // --- 7. UTILIDADES ---
 
         function monitorearMensajesNuevos() {
@@ -957,10 +1134,7 @@
             });
         }
 
-        //function guardarLecturaLocal(id, ultimoId) {
-        //    state.ultimoIdComentarioVisto[id] = ultimoId;
-        //    localStorage.setItem('chat_visto_' + user.id, JSON.stringify(state.ultimoIdComentarioVisto));
-        //}
+
         function guardarLecturaLocal(id, ultimoId) {
             // 1. Mantiene tu lógica actual de objeto JSON para las notificaciones (badges)
             state.ultimoIdComentarioVisto[id] = ultimoId;
@@ -993,13 +1167,26 @@
 
      /*   function seleccionarArchivoChat(input) { if (input.files.length > 0) { $("#lblNombreArchivoChat").text(input.files[0].name); $("#divPreviewChat").show(); } }*/
         function limpiarArchivoChat() { $("#fArchivoChat").val(""); $("#divPreviewChat").hide(); }
-        /* function abrirModalNuevo() { $("#cboIncidencia").val(""); $("#modalNuevoCanje").modal("show"); }*/
+
         function abrirModalNuevo() {
+            // 1. Resetear Selects
             $("#cboIncidencia").val("");
-            $("#txtDescripcionNueva").val(""); // --- NUEVO: Limpiar el campo al abrir ---
+            $("#cboCajaNueva").val("");
+
+            // 2. Limpiar Inputs de texto, número y fecha
+            $("#txtMontoNueva").val("");
+            $("#txtFacturaNueva").val("");
+            $("#txtFechaFacturaNueva").val("");
+
+            // 3. Limpiar Textarea de descripción
+            $("#txtDescripcionNueva").val("");
+
+            // 4. Limpiar Input de archivos (Evidencia)
+            $("#fArchivos").val("");
+
+            // 5. Mostrar el modal
             $("#modalNuevoCanje").modal("show");
         }
-
         function enviarSolicitudEstructurada() {
             const cuerpo = $("#txtInfoRequerida").val().trim();
             if (cuerpo === "") return;
@@ -1117,28 +1304,67 @@
             });
         }
         function actualizarContadoresCards() {
-            // Si el contenedor de las cards no existe en el HTML, salimos de la función
-            if ($('#card-total-abiertos').length === 0) return;
+            // 1. Validar que la tabla y el contador existan
+            if (!tablaCanjes || $('#card-total-abiertos').length === 0) return;
+
+            // 2. Obtener todos los datos cargados en la tabla (no solo los visibles)
+            let todosLosDatos = tablaCanjes.data();
 
             let abiertos = 0;
             let proceso = 0;
             let cerrados = 0;
 
-            // Recorremos la tabla para contar los estados actuales
-            $("#tblCanjes tbody tr").each(function () {
-                // Buscamos el texto dentro del badge de estado en cada fila
-                let estado = $(this).find(".badge").text().trim().toLowerCase();
+            // 3. Recorrer el array de objetos JSON directamente
+            todosLosDatos.each(function (row) {
+                // Usamos el nombre de la propiedad tal cual viene del servidor (minúscula o mayúscula según tu C#)
+                let estado = (row.estado || row.Estado || "").toString().trim().toLowerCase();
 
                 if (estado === "pendiente") abiertos++;
                 else if (estado === "en proceso") proceso++;
                 else if (estado === "cerrado") cerrados++;
             });
 
-            // Asignamos los valores a las cards
+            // 4. Actualizar las Cards con animación (opcional pero elegante)
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
-            // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados);
+
+            // Log para depuración en consola
+            console.log(`Contadores actualizados: Pendientes: ${abiertos}, Proceso: ${proceso}`);
         }
+
+
+
+         function recarcarAdjuntosActuales() {
+            // Obtenemos el ID del estado global que ya manejas
+            const id = state.canjeSeleccionado.idCanje || state.canjeSeleccionado.IdCanje;
+            if (id) {
+                cargarAdjuntos(id);
+            }
+        }
+
+        function cargarAdjuntos(id) {
+            // Si recibimos el objeto completo, extraemos el ID
+            const idLimpio = (typeof id === 'object') ? (id.idCanje || id.IdCanje) : id;
+
+            // IMPORTANTE: El nombre del parámetro debe ser 'idCanjes' para que coincida con tu [HttpGet] de C#
+            $.get('@Url.Action("ObtenerAdjuntos", "Canjes")', { idCanjes: idLimpio }, function(data) {
+                if (!data || data.length === 0) {
+                    $("#listaAdjuntos").html('<div class="p-3 text-center text-muted small">No hay archivos adjuntos</div>');
+                    return;
+                }
+
+                let html = data.map(x => `
+                    <a href="${x.ruta.replace('~','')}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center p-2">
+                        <i class="fas fa-file-alt text-primary me-3"></i>
+                        <div class="text-truncate small fw-bold">${x.nombreOriginal}</div>
+                    </a>`).join('');
+
+                $("#listaAdjuntos").html(html);
+            }).fail(function() {
+                $("#listaAdjuntos").html('<div class="p-3 text-center text-danger small">Error al conectar con el servidor</div>');
+            });
+        }
+
+
     </script>
 }

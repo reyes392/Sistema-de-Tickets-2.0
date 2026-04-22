@@ -36,7 +36,16 @@ namespace Capa_Negocios.Anulaciones
                     mensaje = "El usuario solicitante es obligatorio.";
                     return false;
                 }
-
+                if (obj.Monto <= 0)
+                {
+                    mensaje = "El monto debe ser mayor a cero.";
+                    return false;
+                }
+                if (string.IsNullOrEmpty(obj.NumeroFactura))
+                {
+                    mensaje = "El número de factura es obligatorio.";
+                    return false;
+                }
                 obj.IdEstado = 3; // Estado inicial: Pendiente
             }
             if (string.IsNullOrWhiteSpace(obj.DescripcionProblema))

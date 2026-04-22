@@ -64,6 +64,8 @@ namespace Capa_Datos.Tickets
 
                                     Registro = dr["REGISTRO"] == DBNull.Value ? null : Convert.ToDateTime(dr["REGISTRO"]),
                                     Modificacion = dr["MODIFICACION"] == DBNull.Value ? null : Convert.ToDateTime(dr["MODIFICACION"]),
+                                    FechaTicket = dr["FECHA_TICKET"] == DBNull.Value ? null : Convert.ToDateTime(dr["FECHA_TICKET"]),
+                                    Turno = dr["TURNO"].ToString()
                                 });
                             }
                         }
@@ -107,6 +109,8 @@ namespace Capa_Datos.Tickets
                     cmd.Parameters.AddWithValue("@RESOLUCION_PROBLEMA", (object)obj.Resolucion ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ID_ESTADO", obj.IdEstado);
                     cmd.Parameters.AddWithValue("@ID_USUARIO_ASIGNADO", obj.IdUsuarioAsignado == 0 ? DBNull.Value : obj.IdUsuarioAsignado);
+                    cmd.Parameters.AddWithValue("@FECHA_TICKET", (object)obj.FechaTicket ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@TURNO", (object)obj.Turno ?? DBNull.Value);
 
                     // Parámetros de salida
                     cmd.Parameters.Add("@RESULTADO", SqlDbType.Bit).Direction = ParameterDirection.Output;

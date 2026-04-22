@@ -169,21 +169,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
      
         public IActionResult AuditoriaZ()
         {
-            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-
-            //// Pasamos los datos a la vista para validaciones de UI
-            //ViewBag.IdUsuarioLogueado = idLogueado;
-            //ViewBag.RolUsuario = idRolLogueado;
-            //ViewBag.Incidencias = _incidencia.Listar();
-
-            //// Filtro inteligente: 
-            //// Si es Administrador (1) o Gerencia (5), ve TODO.
-            //// Si es Auditor de Z (8), ve lo que tiene asignado.
-            //// Otros (Farmacia, etc.), ven solo lo que ellos solicitaron.
-            //var lista = _negocioAuditoria.Listar(idLogueado, idRolLogueado);
-
-            //return View(lista);
+     
             // Solo cargamos datos para modales y UI
             ViewBag.IdUsuarioLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
             ViewBag.RolUsuario = HttpContext.Session.GetInt32("IdRol") ?? 0;

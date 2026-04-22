@@ -6,7 +6,123 @@
     var listaReclamos = Model ?? new List<E_Canje>();
 }
 
+<style>
+    /* Estilos para el Chat */
+    #chatBox {
+        height: 350px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        gap: 12px;
+    }
 
+    .chat-message {
+        max-width: 80%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        position: relative;
+        font-size: 0.9rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .chat-left {
+        align-self: flex-start;
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        color: #333;
+    }
+
+    .chat-right {
+        align-self: flex-end;
+        background-color: #0d6efd;
+        color: white;
+    }
+
+    .chat-time {
+        font-size: 0.65rem;
+        display: block;
+        margin-top: 4px;
+        opacity: 0.7;
+    }
+
+    .chat-user {
+        font-size: 0.7rem;
+        font-weight: bold;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .notif-badge {
+        font-size: 0.6rem;
+        padding: 4px 6px;
+        margin-left: 5px;
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    /* ===== TEXTO GENERAL ===== */
+    body {
+        color: #212529;
+    }
+
+    /* Labels y títulos */
+    label, .form-label, strong {
+        color: #1a1a1a;
+    }
+
+    /* Texto secundario */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== TABLAS (SOLO TEXTO) ===== */
+    .table td {
+        color: #2c2c2c;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #ffffff; /* asegura buen contraste en header oscuro */
+    }
+
+    /* ===== DETALLE DERECHO ===== */
+    #seccionDetalle {
+        background-color: #f4f6f9;
+    }
+
+    /* Inputs */
+    .form-control {
+        color: #000;
+    }
+
+    /* Textarea readonly */
+    textarea[readonly] {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    /* ===== BOTONES ===== */
+    .btn {
+        font-weight: 500;
+    }
+</style>
 
 
 <div class="container-fluid">
@@ -23,40 +139,7 @@
         </div>
     </div>
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Panel de Filtros</h6>
-        </div>
-        <div class="card-body bg-light">
-            <div class="row">
-                <div class="col-md-3 mb-2">
-                    <label class="small font-weight-bold">Rango de Fechas (Registro)</label>
-                    <div class="input-group input-group-sm">
-                        <input type="date" id="min" class="form-control" placeholder="Desde">
-                        <input type="date" id="max" class="form-control">
-                    </div>
-                </div>
-                <div class="col-md-3 mb-2">
-                    <label class="small font-weight-bold">Filtrar por Estado</label>
-                    <select id="selectEstado" class="form-control form-control-sm">
-                        <option value="">Todos los estados</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En Proceso">En Proceso</option>
-                        <option value="Cerrado">Cerrado</option>
-                    </select>
-                </div>
-                <div class="col-md-3 mb-2">
-                    <label class="small font-weight-bold">Técnico Asignado</label>
-                    <input type="text" id="buscTecnico" class="form-control form-control-sm" placeholder="Nombre del técnico...">
-                </div>
-                <div class="col-md-3 mb-2 d-flex align-items-end">
-                    <button class="btn btn-secondary btn-sm btn-block" onclick="limpiarFiltros()">
-                        <i class="fas fa-eraser"></i> Limpiar Filtros
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+ 
 
     <div class="card shadow mb-4">
         <div class="card-body">
@@ -129,28 +212,7 @@
 
     <script>
         $(document).ready(function () {
-            // 1. Filtro de Fechas Personalizado
-            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-                var min = $('#min').val();
-                var max = $('#max').val();
-
-                // La fecha de registro en Canjes está en la columna 4
-                var dateStr = data[4] || "";
-
-                if (!min && !max) return true;
-
-                try {
-                    // Convertimos DD/MM/YYYY a YYYY-MM-DD
-                    var parts = dateStr.split(' ')[0].split('/');
-                    var actualDate = parts[2] + "-" + parts[1] + "-" + parts[0];
-
-                    if (min && actualDate < min) return false;
-                    if (max && actualDate > max) return false;
-                    return true;
-                } catch (e) {
-                    return true;
-                }
-            });
+        
 
             // 2. Inicializar DataTable
             var table = $('#tblReporteMaster').DataTable({
@@ -181,28 +243,22 @@
             $('#btnExportarExcel').on('click', function () { table.button(0).trigger(); });
             $('#btnExportarPDF').on('click', function () { table.button(1).trigger(); });
 
-            // 4. Filtros corregidos
+            // Clonar header para filtros
+            $('#tblReporteMaster thead tr').clone(true).appendTo('#tblReporteMaster thead');
 
-            // Estado está en la columna 11
-            $('#selectEstado').on('change', function () {
-                table.column(11).search(this.value).draw();
-            });
+            $('#tblReporteMaster thead tr:eq(1) th').each(function (i) {
+                var title = $(this).text();
 
-            // Técnico/Usuario Asignado está en la columna 1
-            $('#buscTecnico').on('keyup', function () {
-                table.column(1).search(this.value).draw();
-            });
+                $(this).html('<input type="text" class="form-control form-control-sm" placeholder="' + title + '" />');
 
-            // Redibujar al cambiar fechas
-            $('#min, #max').on('change', function () {
-                table.draw();
+                $('input', this).on('keyup change', function () {
+                    if (table.column(i).search() !== this.value) {
+                        table.column(i).search(this.value).draw();
+                    }
+                });
             });
         });
 
-        function limpiarFiltros() {
-            $('#min, #max, #buscTecnico, #selectEstado').val('');
-            var table = $('#tblReporteMaster').DataTable();
-            table.search('').columns().search('').draw();
-        }
+       
     </script>
 }

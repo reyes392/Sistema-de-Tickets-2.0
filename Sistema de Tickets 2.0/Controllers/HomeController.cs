@@ -373,28 +373,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [Permiso("TICKET_VER")]
         public IActionResult Tickets()
         {
-            //ViewBag.Cajas = _negocioCajas.Listar();
-            //ViewBag.Incidencias = _negocioTiposIncidenciasTickets.Listar();
-            //ViewBag.Estados = _negocioEstados.ListarEstados();
-
-            //// Obtenemos datos de sesión
-            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-            //string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            //// Pasamos a la vista para el JS
-            //ViewBag.IdUsuarioLogueado = idLogueado;
-            //ViewBag.RolUsuario = idRolLogueado;
-            //ViewBag.NombreUsuarioLogueado = nombreLogueado;
-
-            //var lista = _negocioTickets.Listar();
-
-            //// LÓGICA DE FILTRADO SOLICITADA:
-            //// Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
-            //if (idRolLogueado != 1 && idRolLogueado != 3)
-            //{
-            //    lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
-            //}
+           
 
             //return View(lista);
             ViewBag.Cajas = _negocioCajas.Listar();
@@ -656,23 +635,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
         #endregion
 
         #region SONIDOS DE NOTIFICACION
-        //[HttpGet]
-        //public JsonResult VerificarNotificaciones()
-        //{
-        //    // Obtenemos los datos de la sesión actual
-        //    int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-        //    int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-
-        //    if (idLogueado == 0)
-        //    {
-        //        return Json(new { total = 0 });
-        //    }
-
-        //    // Instancia de negocio y llamada al método
-        //    int totalNotificaciones = _notificacion.ObtenerConteoActividad(idLogueado, idRolLogueado);
-
-        //    return Json(new { total = totalNotificaciones });
-        //}
+  
         [HttpGet]
         public JsonResult VerificarNotificaciones()
         {
@@ -730,18 +693,17 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [Permiso("TICKETS_REPORTE")]
         public IActionResult ReporteTickets()
         {
-            // 1. Instanciar tu capa de negocio o llamar al método que trae la lista
-            // Ajusta "CN_Reclamos" y "Listar" según los nombres reales de tus clases
+            return View();
+        }
+        [HttpGet]
+        public JsonResult ObtenerReporteTickets()
+        {
             var lista = _negocioTickets.Listar();
 
-            // 2. Si la lista es null, enviamos una lista vacía para evitar el error
             if (lista == null)
-            {
-                lista = new List<Capa_Entidad.Tickets.E_Tickets>();
-            }
+                lista = new List<E_Tickets>();
 
-            // 3. Pasar la lista a la vista
-            return View(lista);
+            return Json(lista);
         }
         #endregion
         /////////////////////////////////////////////////////////////////////////////////////////////////////

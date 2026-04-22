@@ -36,5 +36,10 @@ namespace Capa_Entidad.Canjes
         // Opcional: Si necesitas mostrar quién autorizó o anuló en algún detalle
         public string? NombreAutorizador { get; set; }
         public string? NombreAnulador { get; set; }
+        public decimal? Monto { get; set; }
+        public string NumeroFactura { get; set; }
+        public DateTime? FechaFactura { get; set; }
+        public int? IdCaja { get; set; }
+        public string NombreCaja { get; set; } // Para el listado
     }
 }

@@ -77,9 +77,57 @@
             opacity: 1;
         }
     }
+
+    /* ===== TEXTO GENERAL ===== */
+    body {
+        color: #212529;
+    }
+
+    /* Labels y títulos */
+    label, .form-label, strong {
+        color: #1a1a1a;
+    }
+
+    /* Texto secundario */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== TABLAS (SOLO TEXTO) ===== */
+    .table td {
+        color: #2c2c2c;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #ffffff; /* asegura buen contraste en header oscuro */
+    }
+
+    /* ===== DETALLE DERECHO ===== */
+    #seccionDetalle {
+        background-color: #f4f6f9;
+    }
+
+    /* Inputs */
+    .form-control {
+        color: #000;
+    }
+
+    /* Textarea readonly */
+    textarea[readonly] {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    /* ===== BOTONES ===== */
+    .btn {
+        font-weight: 500;
+    }
+
+
 </style>
 
-@if (ViewBag.RolUsuario == 9) // Cambia el 1 por el ID que corresponda a "Administrador"
+@if (ViewBag.RolUsuario == 9|| ViewBag.RolUsuario == 1) // Cambia el 1 por el ID que corresponda a "Administrador"
 {
     <div class="row mb-4">
         <div class="col-md-3">
@@ -205,10 +253,13 @@
                     </div>
 
                     <div class="row g-2 mb-4 border-bottom pb-3">
-                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Técnico:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Caja:</strong> <span id="txtCaja" class="d-block text-muted"></span></div>
+                        <div class="col-6 small text-primary"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Técnico:</strong> <span id="txtAsignado" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Caja:</strong> <span id="txtCaja" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Factura:</strong> <span id="txtDetalleFactura" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Monto:</strong> <span id="txtDetalleMonto" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Fecha Fact.:</strong> <span id="txtDetalleFechaFactura" class="d-block fw-bold"></span></div>
                     </div>
                     <div class="mb-3">
                         <label class="fw-bold small">Observaciones Iniciales:</label>
@@ -219,7 +270,7 @@
                             <textarea id="txtDetalleProblema" class="form-control border-danger" rows="4"></textarea>
                         </div>*@
                     <div class="mb-3">
-                        <label class="fw-bold small text-success">Resolución Técnica:</label>
+                        <label class="fw-bold small ">Resolución Técnica:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
                     </div>
 
@@ -301,6 +352,20 @@
                         }
                     </select>
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Número de Factura</label>
+                        <input type="text" id="txtNumFacturaNuevo" class="form-control" placeholder="Ej: 001-002-12345" autocomplete="off">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Monto (C$)</label>
+                        <input type="number" id="txtMontoNuevo" class="form-control" step="0.01" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Fecha de Factura</label>
+                    <input type="date" id="txtFechaFacturaNuevo" class="form-control">
+                </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase text-danger">
                         <i class="fas fa-exclamation-circle"></i> Descripción del Problema
@@ -353,26 +418,22 @@
         let tablaAnulaciones = null;
 
         $(document).ready(function () {
-            // 1. Inicializar DataTable
-            //$('#tblTickets').DataTable({
-            //    pageLength: 10,
-            //    lengthMenu: [5, 10, 25, 50],
-            //    order: [],
-            //    language: {
-            //        lengthMenu: "Mostrar _MENU_ registros",
-            //        zeroRecords: "No se encontraron datos",
-            //        info: "Página _PAGE_ de _PAGES_",
-            //        infoEmpty: "No hay registros",
-            //        infoFiltered: "(filtrado de _MAX_ registros)",
-            //        search: "Buscar:",
-            //        paginate: {
-            //            first: "Primero",
-            //            last: "Último",
-            //            next: "Siguiente",
-            //            previous: "Anterior"
-            //        }
-            //    }
-            //});
+
+            // Clonar header para filtros
+            $('#tblTickets thead tr').clone(true).appendTo('#tblTickets thead');
+
+            $('#tblTickets thead tr:eq(1) th').each(function (i) {
+
+                // Evitar columna de botón (Acción)
+                if (i === 5) {
+                    $(this).html('');
+                    return;
+                }
+
+                var title = $(this).text().trim();
+
+                $(this).html(`<input type="text" class="form-control form-control-sm" placeholder="${title}" />`);
+            });
             tablaAnulaciones = $('#tblTickets').DataTable({
                 destroy: true,
                 processing: true,
@@ -387,17 +448,21 @@
                         data: 'idAnulacion',
                         render: function(data, type, row) {
                             return `
-                                <span class="fw-bold">${data}</span>
-                                <span id="notif-${data}" class="badge rounded-pill bg-danger d-none notif-badge">
-                                    <i class="fas fa-comment"></i>
-                                </span>`;
+                                <div class="d-flex align-items-center">
+                                  <span id="notif-${data}" class="badge badge-danger rounded-circle d-none mr-2 shadow-sm" style="padding: 5px 7px;">
+                                      <i class="fas fa-envelope" style="font-size: 0.7rem;"></i>
+                                  </span>
+                                  <span class="fw-bold text-primary">${data}</span>
+                              </div>`;
                         }
                     },
                     { data: 'usuarioSolicitador' },
                     { data: 'incidencia' },
                     {
                         data: 'registro',
-                        render: function(data) { return data ? data : '---'; }
+                        render: function (data) {
+                            return data ? new Date(data).toLocaleString() : 'N/A';
+                        }
                     },
                     {
                         data: 'estado',
@@ -420,14 +485,36 @@
                         }
                     }
                 ],
-                drawCallback: function() {
-                    // Sincroniza estados de chat si tienes la función
-                    if (typeof sincronizarEstadosChatMasivo === "function") sincronizarEstadosChatMasivo();
+                drawCallback: function () {
+                    // 1. Sincroniza estados de chat (badges de mensajes nuevos)
+                    if (typeof sincronizarEstadosChatMasivo === "function") {
+                        sincronizarEstadosChatMasivo();
+                    }
+
+                    // 2. Refresca los números de las tarjetas superiores
+                    actualizarContadoresCards();
                 },
                 language: {
                     processing: '<div class="spinner-border text-primary" role="status"></div>',
                     url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
                 }
+            });
+
+
+            // Activar filtros por columna
+            $('#tblTickets thead tr:eq(1) th').each(function (i) {
+
+                $('input', this).on('keyup change', function () {
+
+                    if (tablaAnulaciones.column(i).search() !== this.value) {
+                        tablaAnulaciones
+                            .column(i)
+                            .search(this.value)
+                            .draw();
+                    }
+
+                });
+
             });
             // Detectar cuando el usuario cambia a la pestaña de Chat
             $('button[data-bs-target="#chat"]').on('shown.bs.tab', function (e) {
@@ -612,6 +699,21 @@
             };
 
             // Llenado de etiquetas (Usamos .text para labels y .val para textareas)
+            // --- NUEVA LÓGICA DE VISUALIZACIÓN DE FACTURA ---
+            $("#txtDetalleFactura").text(anulacion.numeroFactura || anulacion.NumeroFactura || "N/A");
+
+            // Formato de Moneda
+            const montoVal = anulacion.monto || anulacion.Monto;
+            $("#txtDetalleMonto").text(montoVal ? "C$ " + parseFloat(montoVal).toLocaleString('en-US', { minimumFractionDigits: 2 }) : "N/A");
+
+            // Formato de Fecha Factura
+            const fechaFact = anulacion.fechaFactura || anulacion.FechaFactura;
+            if (fechaFact) {
+                let df = new Date(fechaFact);
+                $("#txtDetalleFechaFactura").text(df.toLocaleDateString());
+            } else {
+                $("#txtDetalleFechaFactura").text("N/A");
+            }
             $("#lblIdTicket").text(id);
             $("#txtSolicitante").text(anulacion.usuarioSolicitador || anulacion.UsuarioSolicitador || "N/A");
             $("#txtIncidencia").text(anulacion.incidencia || anulacion.Incidencia || "N/A");
@@ -853,10 +955,32 @@
             });
         }
 
-        function abrirModalNuevo() { $("#modalNuevoTicket").modal("show"); }
+        /*    function abrirModalNuevo() { $("#modalNuevoTicket").modal("show"); }*/
+        function abrirModalNuevo() {
+            // 1. Resetear Selects
+            $("#cboIncidencia").prop("selectedIndex", 0);
+            $("#cboCaja").val("0");
+
+            // 2. Limpiar Inputs de texto, número y fecha
+            $("#txtNumFacturaNuevo").val("");
+            $("#txtMontoNuevo").val("");
+            $("#txtFechaFacturaNuevo").val("");
+
+            // 3. Limpiar Textarea de descripción
+            $("#txtDescripcionProblemaNuevo").val("");
+
+            // 4. Limpiar Input de archivos
+            $("#fArchivos").val("");
+
+            // 5. Mostrar el modal
+            $("#modalNuevoTicket").modal("show");
+        }
 
         function crearTicket() {
             const descripcion = $("#txtDescripcionProblemaNuevo").val().trim();
+            const monto = $("#txtMontoNuevo").val();
+            const numFactura = $("#txtNumFacturaNuevo").val(); 
+            const fechaFactura = $("#txtFechaFacturaNuevo").val();
 
             if (descripcion === "") {
                 Swal.fire("Atención", "Debes escribir la descripción del problema.", "warning");
@@ -868,6 +992,9 @@
                 IdIncidencias: parseInt($("#cboIncidencia").val()),
                 IdCaja: parseInt($("#cboCaja").val()),
                 DescripcionProblema: descripcion,
+                Monto: monto !== "" ? parseFloat(monto) : null,
+                NumeroFactura: numFactura,
+                FechaFactura: fechaFactura !== "" ? fechaFactura : null,
                 IdEstado: 3
             };
 
@@ -891,7 +1018,10 @@
                 IdIncidencias: parseInt(Seleccionado.idIncidencias || Seleccionado.IdIncidencias || 0),
                 IdCaja: Seleccionado.IdCaja || Seleccionado.idCaja,
                 IdUsuarioAsignado: idUsuarioLogueado,
-                UsuarioAsignado: nombreTecnicoLogueado // <--- Aseguramos que se mantenga el nombre
+                UsuarioAsignado: nombreTecnicoLogueado ,// <--- Aseguramos que se mantenga el nombre
+                Monto: Seleccionado.monto || Seleccionado.Monto,
+                NumeroFactura: Seleccionado.numeroFactura || Seleccionado.NumeroFactura,
+                FechaFactura: Seleccionado.fechaFactura || Seleccionado.FechaFactura
             };
            // PRUEBA EN CONSOLA: Antes de enviar, abre F12 y mira si IdIncidencias tiene valor
            console.log("Enviando este objeto:", Data);
@@ -1023,28 +1153,32 @@
         }
 
         function actualizarContadoresCards() {
-            // Si el contenedor de las cards no existe en el HTML, salimos de la función
-            if ($('#card-total-abiertos').length === 0) return;
+            // 1. Validar que la tabla y el contador existan
+            if (!tablaAnulaciones || $('#card-total-abiertos').length === 0) return;
+
+            // 2. Obtener todos los datos cargados en la tabla (no solo los visibles)
+            let todosLosDatos = tablaAnulaciones.data();
 
             let abiertos = 0;
             let proceso = 0;
             let cerrados = 0;
 
-            // Recorremos la tabla para contar los estados actuales
-            $("#tblTickets tbody tr").each(function () {
-                // Buscamos el texto dentro del badge de estado en cada fila
-                let estado = $(this).find(".badge").text().trim().toLowerCase();
+            // 3. Recorrer el array de objetos JSON directamente
+            todosLosDatos.each(function (row) {
+                // Usamos el nombre de la propiedad tal cual viene del servidor (minúscula o mayúscula según tu C#)
+                let estado = (row.estado || row.Estado || "").toString().trim().toLowerCase();
 
                 if (estado === "pendiente") abiertos++;
                 else if (estado === "en proceso") proceso++;
                 else if (estado === "cerrado") cerrados++;
             });
 
-            // Asignamos los valores a las cards
+            // 4. Actualizar las Cards con animación (opcional pero elegante)
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
-            // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados);
+
+            // Log para depuración en consola
+            console.log(`Contadores actualizados: Pendientes: ${abiertos}, Proceso: ${proceso}`);
         }
     </script>
 }

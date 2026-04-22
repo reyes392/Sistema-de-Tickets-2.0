@@ -95,27 +95,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [Permiso("RECLAMOS_VER")]
         public IActionResult Reclamos()
         {
-            //ViewBag.Incidencias = _negocioIncidencias.Listar();
-            //ViewBag.Estados = _negocioEstados.ListarEstados();
-
-            //// Obtenemos datos de sesión
-            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-            //string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            //// Pasamos a la vista para el JS
-            //ViewBag.IdUsuarioLogueado = idLogueado;
-            //ViewBag.RolUsuario = idRolLogueado;
-            //ViewBag.NombreUsuarioLogueado = nombreLogueado;
-
-            //var lista = _negocioReclamos.Listar();
-
-            //// LÓGICA DE FILTRADO SOLICITADA:
-            //// Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
-            //if (idRolLogueado != 1 && idRolLogueado != 4)
-            //{
-            //    lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
-            //}
+          
 
             //return View(lista);
             ViewBag.Incidencias = _negocioIncidencias.Listar();
@@ -271,17 +251,7 @@ namespace Sistema_de_Tickets_2._0.Controllers
             return Json(lista);
         }
 
-        //[HttpPost]
-        //public IActionResult TomarReclamo(int idReclamo)
-        //{
-        //    int idUsuarioSesion = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-        //    if (idUsuarioSesion == 0) return Json(new { success = false, mensaje = "Sesión expirada" });
-
-        //    // Llamamos al método que asigna y cambia estado
-        //    bool ok = _negocioReclamos.AsignarYProcesar(idReclamo, idUsuarioSesion, out string mensaje);
-
-        //    return Json(new { success = ok, mensaje = mensaje });
-        //}
+    
         [HttpPost]
         public IActionResult TomarReclamo(int idReclamo)
         {
@@ -450,18 +420,16 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [Permiso("RECLAMOS_REPORTE")]
         public IActionResult ReportesReclamos()
         {
-            // 1. Instanciar tu capa de negocio o llamar al método que trae la lista
-            // Ajusta "CN_Reclamos" y "Listar" según los nombres reales de tus clases
+            return View();
+        }
+        public JsonResult ObtenerReporte()
+        {
             var lista = _negocioReclamos.Listar();
 
-            // 2. Si la lista es null, enviamos una lista vacía para evitar el error
             if (lista == null)
-            {
-                lista = new List<Capa_Entidad.ReclamosBodega.E_ReclamosBodega>();
-            }
+                lista = new List<E_ReclamosBodega>();
 
-            // 3. Pasar la lista a la vista
-            return View(lista);
+            return Json(lista);
         }
         #endregion
     }

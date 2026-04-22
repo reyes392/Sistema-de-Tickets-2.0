@@ -76,6 +76,55 @@
             opacity: 1;
         }
     }
+
+    /* ===== TEXTO GENERAL ===== */
+    body {
+        color: #212529;
+    }
+
+    /* Labels y títulos */
+    label, .form-label, strong {
+        color: #1a1a1a;
+    }
+
+    /* Texto secundario */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== TABLAS (SOLO TEXTO) ===== */
+    .table td {
+        color: #2c2c2c;
+    }
+
+    .table th {
+        font-weight: 600;
+        color: #ffffff; /* asegura buen contraste en header oscuro */
+    }
+
+    /* ===== DETALLE DERECHO ===== */
+    #seccionDetalle {
+        background-color: #f4f6f9;
+    }
+
+    /* Inputs */
+    .form-control {
+        color: #000;
+    }
+
+    /* Textarea readonly */
+    textarea[readonly] {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    /* ===== BOTONES ===== */
+    .btn {
+        font-weight: 500;
+    }
+
+
+
 </style>
 
 @if (ViewBag.RolUsuario == 1|| ViewBag.RolUsuario == 3) // Cambia el 1 por el ID que corresponda a "Administrador"
@@ -208,12 +257,14 @@
                     </div>
 
                     <div class="row g-2 mb-4 border-bottom pb-3">
-                        <div class="col-6 small"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Categoría:</strong> <span id="txtCategoria" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Urgencia:</strong> <span id="txtUrgencia" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Técnico:</strong> <span id="txtAsignado" class="d-block text-muted"></span></div>
-                        <div class="col-6 small"><strong>Caja:</strong> <span id="txtCaja" class="d-block text-muted"></span></div>
+                        <div class="col-6 small text-primary"><strong>Solicitante:</strong> <span id="txtSolicitante" class="d-block  fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Técnico:</strong> <span id="txtAsignado" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Incidencia:</strong> <span id="txtIncidencia" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary "><strong>Categoría:</strong> <span id="txtCategoria" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Urgencia:</strong> <span id="txtUrgencia" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Caja:</strong> <span id="txtCaja" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Fecha:</strong> <span id="txtFecha" class="d-block fw-bold"></span></div>
+                        <div class="col-6 small text-primary"><strong>Turno:</strong> <span id="txtTurno" class="d-block fw-bold"></span></div>
                     </div>
 
                     <div class="mb-3">
@@ -221,7 +272,7 @@
                         <textarea id="txtDetalleProblema" class="form-control bg-light" rows="3" readonly></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="fw-bold small text-success">Resolución Técnica:</label>
+                        <label class="fw-bold small ">Resolución Técnica:</label>
                         <textarea id="txtResolucion" class="form-control border-success" rows="4"></textarea>
                     </div>
 
@@ -316,6 +367,7 @@
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Tipo de Incidencia</label>
                     <select id="cboIncidencia" class="form-select border-primary">
+                        <option value="0">-- Elegir --</option>
                         @foreach (var item in ViewBag.Incidencias)
                         {
                             <option value="@item.IdTiposIncidenciasTickets">@item.Descripcion</option>
@@ -331,6 +383,21 @@
                             <option value="@item.IdCaja">@item.Descripcion</option>
                         }
                     </select>
+                </div>
+                @* --- Solo se mostrará si cboIncidencia == 1 --- *@
+                <div id="seccionExtraReimpresion" style="display:none;">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Fecha</label>
+                        <input type="date" id="txtFechaIncidencia" class="form-control"  />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Turno</label>
+                        <select id="cboTurno" class="form-select">
+                            <option value="" selected>-- Elegir --</option>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-uppercase">Descripción del Problema</label>
@@ -379,40 +446,47 @@
 
 
         $(document).ready(function () {
-            // 1. Inicializar DataTable
-            //$('#tblTickets').DataTable({
-            //    pageLength: 10,
-            //    lengthMenu: [5, 10, 25, 50],
-            //    order: [],
-            //    language: {
-            //        lengthMenu: "Mostrar _MENU_ registros",
-            //        zeroRecords: "No se encontraron datos",
-            //        info: "Página _PAGE_ de _PAGES_",
-            //        infoEmpty: "No hay registros",
-            //        infoFiltered: "(filtrado de _MAX_ registros)",
-            //        search: "Buscar:",
-            //        paginate: {
-            //            first: "Primero",
-            //            last: "Último",
-            //            next: "Siguiente",
-            //            previous: "Anterior"
-            //        }
-            //    }
-            //});
+            // Clonar header para filtros
+            $('#tblTickets thead tr').clone(true).appendTo('#tblTickets thead');
+
+            $('#tblTickets thead tr:eq(1) th').each(function (i) {
+
+                // Evitar columna de botón (Acción)
+                if (i === 7) {
+                    $(this).html('');
+                    return;
+                }
+
+                var title = $(this).text().trim();
+
+                $(this).html(`<input type="text" class="form-control form-control-sm" placeholder="${title}" />`);
+            });
             // Inicializar DataTable con AJAX
            tablaTickets = $('#tblTickets').DataTable({
                destroy: true,
             /*   processing: true, // Muestra el indicador de "Procesando..." al centro*/
                serverSide: false,
                order: [],        // <--- CRUCIAL: Esto hace que respete el orden de tu SQL
+               orderCellsTop: true, // 🔥 CLAVE
                 ajax: {
                     url: '@Url.Action("ObtenerTicketsTabla", "Home")',
                     type: 'GET',
                     dataSrc: ''
                 },
                 columns: [
-                    { data: 'idTicket' }, // ID
-                 
+                    {
+                        data: 'idTicket',
+                        render: function (data, type, row) {
+                            return `
+                                <div class="d-flex align-items-center">
+                                    <span id="notif-${data}" class="badge badge-danger rounded-circle d-none mr-2 shadow-sm" style="padding: 5px 7px;">
+                                        <i class="fas fa-envelope" style="font-size: 0.7rem;"></i>
+                                    </span>
+                                    <span class="fw-bold text-primary">${data}</span>
+                             </div>`;
+                        }
+                    },
+
                     { data: 'ususarioSolicitador' }, // Solicitante
                     { data: 'incidencia' },          // Incidencia
                     { data: 'nivelUrgencia' },       // Urgencia
@@ -434,31 +508,54 @@
                         data: null,
                         orderable: false,
                         render: function (data, type, row) {
-                            // Preparamos el objeto para el botón "Ver" igual que antes
                             let jsonString = JSON.stringify(row).replace(/"/g, '&quot;');
                             return `
-                                <div class="position-relative d-inline-block">
-                                    <button class="btn btn-sm btn-primary btn-ver" data-info="${jsonString}">
-                                        <i class="fas fa-eye"></i> Ver
-                                    </button>
-                                    <span id="notif-${row.idTicket}" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
-                                        !
-                                    </span>
-                                </div>`;
+                                <button class="btn btn-sm btn-outline-primary btn-ver" data-info="${jsonString}">
+                                    <i class="fas fa-eye"></i> Ver
+                                </button>`;
                         }
                     }
                 ],
                 drawCallback: function() {
-                    // Cada vez que la tabla se redibuje (cambio de página, búsqueda),
-                    // sincronizamos los badges de notificaciones
-                    sincronizarEstadosChatMasivo();
+                    setTimeout(() => {
+                        sincronizarEstadosChatMasivo();
+                        actualizarContadoresCards(); // <--- Agrégala aquí también
+                    }, 50);
                 },
                 language: { url: "https://cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json" }
+           });
+            // Activar filtros por columna
+            $('#tblTickets thead tr:eq(1) th').each(function (i) {
+
+                $('input', this).on('keyup change', function () {
+
+                    if (tablaTickets.column(i).search() !== this.value) {
+                        tablaTickets
+                            .column(i)
+                            .search(this.value)
+                            .draw();
+                    }
+
+                });
+
             });
             // Detectar cuando el usuario cambia a la pestaña de Chat
             $('button[data-bs-target="#chat"]').on('shown.bs.tab', function (e) {
                 marcarComoLeido();
             });
+            // Escuchar el cambio en el combo de incidencia
+
+            $("#cboIncidencia").on("change", function () {
+                const idSeleccionado = $(this).val();
+
+                if (idSeleccionado == "1") {
+                    $("#seccionExtraReimpresion").fadeIn();
+                } else {
+                    $("#seccionExtraReimpresion").fadeOut();
+                    $("#txtFechaIncidencia").val();
+                    $("#cboTurno").val("");
+                }
+            }).trigger("change"); // <--- AGREGAR ESTO: Fuerza la validación inicial
             // 2. Ejecutar revisiones iniciales
             actualizarVersionBaseDatos();
             sincronizarEstadosChatMasivo(); // Reemplaza al antiguo .each()
@@ -655,24 +752,42 @@
             const esStaff = (rolUsuarioLogueado === 1 || rolUsuarioLogueado === 3);
 
             const formatearFecha = (f) => {
-                if (!f) return "N/A";
+                if (!f) return "";
                 let d = new Date(f);
                 return d.toLocaleString();
             };
+            function formatearFecha2(fechaStr) {
+                if (!fechaStr) return "";
 
+                // Crear objeto fecha (esto limpia automáticamente la hora si solo necesitas el día)
+                let d = new Date(fechaStr);
+
+                // Validar si la fecha es válida
+                if (isNaN(d.getTime())) return fechaStr.substring(0, 10);
+
+                let dia = ("0" + d.getDate()).slice(-2);
+                let mes = ("0" + (d.getMonth() + 1)).slice(-2);
+                let anio = d.getFullYear();
+
+                return `${dia}/${mes}/${anio}`;
+            }
             // Llenado de etiquetas
             $("#lblIdTicket").text(id);
-            $("#txtSolicitante").text(ticket.ususarioSolicitador || ticket.UsusarioSolicitador || "N/A");
-            $("#txtCategoria").text(ticket.categoria || ticket.Categoria || "N/A");
-            $("#txtIncidencia").text(ticket.incidencia || ticket.Incidencia || "N/A");
-            $("#txtUrgencia").text(ticket.nivelUrgencia || ticket.NivelUrgencia || "N/A");
-            $("#txtCaja").text(ticket.caja || ticket.Caja || "N/A");
-            $("#txtAsignado").text(ticket.usuarioAsignado || ticket.UsuarioAsignado || "N/A");
+            $("#txtSolicitante").text(ticket.ususarioSolicitador || ticket.UsusarioSolicitador || "");
+            $("#txtCategoria").text(ticket.categoria || ticket.Categoria || "");
+            $("#txtIncidencia").text(ticket.incidencia || ticket.Incidencia || "");
+            $("#txtUrgencia").text(ticket.nivelUrgencia || ticket.NivelUrgencia || "");
+            $("#txtCaja").text(ticket.caja || ticket.Caja || "");
+            $("#txtAsignado").text(ticket.usuarioAsignado || ticket.UsuarioAsignado || "");
             $("#lblRegistro").text(formatearFecha(ticket.registro || ticket.Registro));
             $("#lblModif").text(formatearFecha(ticket.modificacion || ticket.Modificacion));
 
-            $("#txtDetalleProblema").val(ticket.problema || ticket.Problema || "N/A");
+            $("#txtDetalleProblema").val(ticket.problema || ticket.Problema || "");
             $("#txtResolucion").val(ticket.resolucion || ticket.Resolucion || "");
+           /* $("#txtFecha").text(formatearFecha(ticket.fechaTicket || ticket.FechaTicket));*/
+            $("#txtFecha").text(formatearFecha2(ticket.fechaTicket || ticket.FechaTicket));
+
+            $("#txtTurno").text(ticket.turno || ticket.Turno || "");
 
             // Badge de estado
             let colorClass = (estado === "Pendiente") ? "bg-warning text-dark" : (estado === "Cerrado" ? "bg-success" : "bg-info");
@@ -913,17 +1028,59 @@
             });
         }
 
-        function abrirModalNuevo() { $("#modalNuevoTicket").modal("show"); }
-        //function crearTicket() {
-        //    const ticket = { IdTicket: 0, IdCaja: parseInt($("#cboCaja").val()), IdIncidencias: parseInt($("#cboIncidencia").val()), Problema: $("#nuevoProblema").val(), IdEstado: 3 };
-        //    enviarDatos(ticket, "INSERT", "#fArchivos");
-        //}
-        function crearTicket() {
-            // 1. Obtener referencia al botón de guardar del modal
-            const $btnGuardar = $("#modalNuevoTicket").find("button[onclick='crearTicket()']");
+        /*  function abrirModalNuevo() { $("#modalNuevoTicket").modal("show"); }*/
+        function abrirModalNuevo() {
+            // 1. Resetear Selects (volver al valor 0 o vacío)
+            $("#cboIncidencia").val("0");
+            $("#cboCaja").val("0");
+            $("#cboTurno").val("");
 
-            // 2. Validaciones básicas antes de bloquear (opcional pero recomendado)
-            if ($("#nuevoProblema").val().trim() === "") {
+            // 2. Limpiar Inputs de texto y fecha
+            $("#txtFechaIncidencia").val("");
+            $("#nuevoProblema").val("");
+
+            // 3. Limpiar el Input de Archivos
+            $("#fArchivos").val("");
+
+        
+            // 5. Mostrar el modal
+            $("#modalNuevoTicket").modal("show");
+        }
+
+        function crearTicket() {
+            // 1. Obtener referencias y valores
+            const $btnGuardar = $("#modalNuevoTicket").find("button[onclick='crearTicket()']");
+            const idIncidencia = $("#cboIncidencia").val();
+            const problema = $("#nuevoProblema").val().trim();
+            const turnoSeleccionado = $("#cboTurno").val();
+            const fechaSeleccionada = $("#txtFechaIncidencia").val();
+            const idCaja = $("#cboCaja").val();
+            
+
+            // 2. VALIDACIONES CRÍTICAS
+
+            // A. Validar que seleccionó una incidencia
+            if (idIncidencia == "0") {
+                Swal.fire('Atención', 'Por favor seleccione un tipo de incidencia', 'warning');
+                return;
+            }
+            if (idIncidencia == "1") { // Ejemplo: Reimpresión
+                if (!idCaja || idCaja == "0") {
+                    Swal.fire('Campo Obligatorio', 'Para este tipo de incidencia debe seleccionar una caja', 'warning');
+                    return;
+                }
+                if (!fechaSeleccionada) {
+                    Swal.fire('Campo Obligatorio', 'Seleccione la fecha del Z a reimprimir', 'warning');
+                    return;
+                }
+                if (!turnoSeleccionado) {
+                    Swal.fire('Campo Obligatorio', 'Seleccione un Turno', 'warning');
+                    return;
+                }
+            }
+       
+            // C. Validar descripción del problema
+            if (problema === "") {
                 Swal.fire('Atención', 'Por favor describa el problema', 'warning');
                 return;
             }
@@ -931,22 +1088,34 @@
             // 3. Bloquear botón y mostrar estado de carga
             $btnGuardar.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
 
+            // 4. PREPARACIÓN DE DATOS (Garantizar NULL si no es incidencia 1)
+            // Esto asegura que si el usuario llenó la fecha y luego cambió de opinión,
+            // esos datos no se guarden si la incidencia final no es la 1.
+            let fechaFinal = (idIncidencia == "1") ? fechaSeleccionada : "";
+            let turnoFinal = (idIncidencia == "1") ? turnoSeleccionado : "";
+
             const ticket = {
                 IdTicket: 0,
-                IdCaja: parseInt($("#cboCaja").val()),
-                IdIncidencias: parseInt($("#cboIncidencia").val()),
-                Problema: $("#nuevoProblema").val(),
-                IdEstado: 3
+                /*   IdCaja: parseInt($("#cboCaja").val()),*/
+                IdCaja: parseInt(idCaja),
+                IdIncidencias: parseInt(idIncidencia),
+                Problema: problema,
+                IdEstado: 3,
+                FechaTicket: fechaFinal, // Se va como null si no es ID 1
+                Turno: turnoFinal        // Se va como null si no es ID 1
             };
 
+            // 5. Enviar (Asegúrate de que enviarDatos maneje el error para desbloquear el botón si falla)
             enviarDatos(ticket, "INSERT", "#fArchivos");
         }
-
        function guardarCambiosTicket() {
             if (!ticketSeleccionado) return;
             const res = $("#txtResolucion").val().trim();
             const nuevoEstadoId = (res !== "") ? 4 : 5;
             const nuevoEstadoTexto = (res !== "") ? "Cerrado" : "En Proceso"; // <--- Agregamos esto
+
+
+
 
             const ticketData = {
                 IdTicket: ticketSeleccionado.IdTicket || ticketSeleccionado.idTicket,
@@ -957,7 +1126,9 @@
                 IdIncidencias: ticketSeleccionado.IdIncidencias || ticketSeleccionado.idIncidencias,
                 IdCaja: ticketSeleccionado.IdCaja || ticketSeleccionado.idCaja,
                 IdUsuarioAsignado: idUsuarioLogueado,
-                UsuarioAsignado: nombreTecnicoLogueado // <--- Aseguramos que se mantenga el nombre
+                UsuarioAsignado: nombreTecnicoLogueado, // <--- Aseguramos que se mantenga el nombre,
+                FechaTicket: $("#txtFechaIncidencia").val().trim(),
+                Turno: $("#cboTurno").val().trim()
             };
 
             Swal.fire({
@@ -1172,28 +1343,32 @@
             });
         }
         function actualizarContadoresCards() {
-            // Si el contenedor de las cards no existe en el HTML, salimos de la función
-            if ($('#card-total-abiertos').length === 0) return;
+            // 1. Validar que la tabla y el contador existan
+            if (!tablaTickets || $('#card-total-abiertos').length === 0) return;
+
+            // 2. Obtener todos los datos cargados en la tabla (no solo los visibles)
+            let todosLosDatos = tablaTickets.data();
 
             let abiertos = 0;
             let proceso = 0;
             let cerrados = 0;
 
-            // Recorremos la tabla para contar los estados actuales
-            $("#tblTickets tbody tr").each(function () {
-                // Buscamos el texto dentro del badge de estado en cada fila
-                let estado = $(this).find(".badge").text().trim().toLowerCase();
+            // 3. Recorrer el array de objetos JSON directamente
+            todosLosDatos.each(function (row) {
+                // Usamos el nombre de la propiedad tal cual viene del servidor (minúscula o mayúscula según tu C#)
+                let estado = (row.estado || row.Estado || "").toString().trim().toLowerCase();
 
                 if (estado === "pendiente") abiertos++;
                 else if (estado === "en proceso") proceso++;
                 else if (estado === "cerrado") cerrados++;
             });
 
-            // Asignamos los valores a las cards
+            // 4. Actualizar las Cards con animación (opcional pero elegante)
             $("#card-total-abiertos").text(abiertos);
             $("#card-total-proceso").text(proceso);
-            // Si tienes un ID para la card de cerrados, agrégalo aquí:
-            // $("#card-total-cerrados").text(cerrados);
+
+            // Log para depuración en consola
+            console.log(`Contadores actualizados: Pendientes: ${abiertos}, Proceso: ${proceso}`);
         }
     </script>
 }

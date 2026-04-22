@@ -89,30 +89,8 @@ namespace Sistema_de_Tickets_2._0.Controllers
         [Permiso("ANULACIONES_VER")]
         public IActionResult Anulaciones()
         {
-            //ViewBag.Incidencias = _Incidencias.Listar();
-            //ViewBag.Estados = _estadoNegocio.ListarEstados();
-            //ViewBag.Cajas = _cajas.Listar();
-
-            //// Obtenemos datos de sesión
-            //int idLogueado = HttpContext.Session.GetInt32("IdUsuario") ?? 0;
-            //int idRolLogueado = HttpContext.Session.GetInt32("IdRol") ?? 0;
-            //string nombreLogueado = HttpContext.Session.GetString("NombreUsuario") ?? "Usuario";
-
-            //// Pasamos a la vista para el JS
-            //ViewBag.IdUsuarioLogueado = idLogueado;
-            //ViewBag.RolUsuario = idRolLogueado;
-            //ViewBag.NombreUsuarioLogueado = nombreLogueado;
-
-            //var lista = _anulaciones.Listar();
-
-            //// LÓGICA DE FILTRADO SOLICITADA:
-            //// Solo Admin (1) y Soporte (3) ven todo. Los demás solo lo propio.
-            //if (idRolLogueado != 1 && idRolLogueado != 6)
-            //{
-            //    lista = lista.Where(t => t.IdUsuarioSolicitud == idLogueado).ToList();
-            //}
-
-            //return View(lista);
+ 
+          
             // Solo cargamos los combos para los modales
             ViewBag.Incidencias = _Incidencias.Listar();
             ViewBag.Estados = _estadoNegocio.ListarEstados();
